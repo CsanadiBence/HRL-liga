@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mentett bajnokságok | HunRise Legacy</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <nav class="navbar">
+            <div class="logo-container">
+                <img src="kislogo.png" alt="HunRise Logo" class="nav-logo">
+                <div class="logo-text">HunRise <span>Legacy</span></div>
+            </div>
+            <a href="bajnoksag/index.html" class="nav-link-main">Bajnokságok</a>
+            
+            <button class="hamburger" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <div class="nav-menu" id="navMenu">
+                <a href="index.html" class="nav-menu-link">Rólunk</a>
+                <a href="players.html" class="nav-menu-link">Játékosok</a>
+                <a href="archives.html" class="nav-menu-link">📜 Mentett bajnokságok</a>
+                <div class="admin-section">
+                    <div id="adminLoggedOut" class="admin-form">
+                        <input type="password" id="adminPassword" placeholder="Admin jelszó" class="admin-input">
+                        <button id="adminLoginBtn" class="admin-btn">Bejelentkezés</button>
+                    </div>
+                    <div id="adminLoggedIn" style="display: none;" class="admin-active">
+                        <span class="admin-status">✓ Admin mód</span>
+                        <button id="adminLogoutBtn" class="admin-logout">Kilépés</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <section class="archives-section">
+        <div class="container">
+            <a href="index.html" style="display: inline-block; margin-bottom: 30px; color: #00d4ff; text-decoration: none; font-weight: 700; transition: 0.3s;">← Vissza a főoldalra</a>
+            <h1 style="text-align: center; margin-bottom: 15px;">Mentett bajnokságok</h1>
+            <p class="section-subtitle">Lezárt szezonok és eredmények</p>
+            <div id="archiveList" class="archive-cards" style="margin-top: 40px;"></div>
+        </div>
+    </section>
+
+    <script src="app.js"></script>
+    <script>
+        // Archives oldal specifikus betöltés
+        document.addEventListener('DOMContentLoaded', function() {
+            renderArchivesPage();
+        });
+
+        async function renderArchivesPage() {
+            const listEl = document.getElementById('archiveList');
+            if (!listEl) return;
+
+            try {
+                const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/archives?pageSize=50`;
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${FIREBASE_API_KEY}` }
+                });
+
+                if (!response.ok) {
+                    listEl.innerHTML = '<p class="muted" style="text-align: center; grid-column: 1/-1; padding: 40px;">Még nincs mentett bajnokság.</p>';
+                    return;
+                }
+
+                const data = await response.json();
+                const documents = data.documents || [];
+
+                if (documents.length === 0) {
+                    listEl.innerHTML = '<p class="muted" style="text-align: center; grid-column: 1/-1; padding: 40px;">Még nincs mentett bajnokság.</p>';
+                    return;
+                }
+
+                listEl.innerHTML = documents.map(doc => {
+                    const fields = doc.fields || {};
+                    const name = fields.name?.stringValue || 'Ismeretlen bajnokság';
+                    const finishedAt = fields.finishedAt?.timestampValue 
+                        ? new Date(fields.finishedAt.timestampValue).toLocaleDateString('hu-HU')
+                        : '-';
+                    const champion = fields.champion?.mapValue?.fields || {};
+                    const champ = champion.winnerName?.stringValue || '-';
+                    const pairing = champion.pairing?.stringValue || 'Nincs döntő rögzítve';
+                    const score = champion.finalScore?.stringValue ? ` (${champion.finalScore.stringValue})` : '';
+
+                    return `
+                        <div class="archive-card">
+                            <div class="archive-head">
+                                <h3>${name}</h3>
+                                <span class="archive-date">${finishedAt}</span>
+                            </div>
+                            <p class="archive-champ">Bajnok: ${champ}</p>
+                            <p class="archive-final">Döntő: ${pairing}${score}</p>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error("Archívum betöltési hiba:", error);
+                listEl.innerHTML = '<p class="muted" style="text-align: center; grid-column: 1/-1; padding: 40px;">Hiba az archívum betöltésekor. Később próbálkozz.</p>';
+            }
+        }
+    </script>
+</body>
+</html>
