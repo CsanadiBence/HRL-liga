@@ -31,12 +31,7 @@ body {
     top: 0;
     width: 100%;
     z-index: 1000;
-}
-
-body {
-    background-color: var(--bg-dark);
-    color: var(--white);
-    overflow-x: hidden;
+    gap: 0;
 }
 
 .logo-container {
@@ -61,26 +56,185 @@ body {
     color: var(--neon-blue);
 }
 
-.nav-links {
-    display: flex;
-    list-style: none;
-}
-
-.nav-links li {
-    margin-left: 30px;
-}
-
-.nav-links a {
+.nav-link-main {
     text-decoration: none;
     color: white;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    padding: 8px 16px;
+    border-radius: 4px;
+    transition: 0.3s;
+    flex-shrink: 0;
+    margin-left: auto;
+    margin-right: 15px;
+}
+
+.nav-link-main:hover {
+    color: var(--neon-blue);
+    text-shadow: 0 0 10px var(--neon-blue);
+}
+
+/* --- HAMBURGER MENÜ --- */
+.hamburger {
+    display: flex;
+    flex-direction: column;
+    background: none;
+    border: none;
+    cursor: pointer;
+    gap: 5px;
+    padding: 8px;
+}
+
+.hamburger span {
+    width: 25px;
+    height: 3px;
+    background-color: var(--neon-blue);
+    border-radius: 2px;
     transition: 0.3s;
 }
 
-.nav-links a:hover {
+.hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(8px, 8px);
+}
+
+.hamburger.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -7px);
+}
+
+/* --- NAV MENÜ --- */
+.nav-menu {
+    display: none;
+    position: fixed;
+    top: 65px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    min-width: 250px;
+    z-index: 1001;
+    box-shadow: 0 8px 24px rgba(0, 212, 255, 0.3), 0 8px 16px rgba(0, 0, 0, 0.8);
+}
+
+.nav-menu-link {
+    text-decoration: none;
+    color: white;
+    padding: 10px 12px;
+    font-weight: 700;
+    border-radius: 4px;
+    transition: 0.3s;
+    text-align: left;
+}
+
+.nav-menu-link:hover {
+    background: rgba(0, 212, 255, 0.1);
     color: var(--neon-blue);
-    text-shadow: 0 0 10px var(--neon-blue);
+}
+
+/* --- ADMIN SZEKCIÓ A MENÜBEN --- */
+.admin-section {
+    border-top: 1px solid rgba(0, 212, 255, 0.2);
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.admin-input {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 0.9rem;
+}
+
+.admin-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.admin-btn {
+    padding: 8px 12px;
+    background: var(--neon-blue);
+    color: black;
+    border: none;
+    border-radius: 4px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.admin-btn:hover {
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+.admin-active {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.admin-status {
+    color: var(--neon-blue);
+    font-weight: 700;
+    padding: 8px 12px;
+}
+
+.admin-logout {
+    padding: 8px 12px;
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.admin-logout:hover {
+    background: #ff6666;
+}
+
+/* --- MOBILE RESPONSIVE --- */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 1px 3%;
+    }
+
+    .nav-logo {
+        width: 50px;
+        height: 50px;
+    }
+
+    .logo-text {
+        font-size: 1rem;
+    }
+
+    .nav-link-main {
+        display: inline-block;
+    }
+
+    .hamburger {
+        display: flex;
+        order: 3;
+    }
+
+    .nav-menu {
+        right: 10px;
+        top: 65px;
+        min-width: 220px;
+    }
 }
 
 /* --- HERO SZAKASZ --- */
@@ -93,6 +247,7 @@ body {
     background-size: cover;
     background-position: center;
     padding: 0 8%;
+    margin-top: 75px;
 }
 
 .container {
