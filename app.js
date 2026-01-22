@@ -2,6 +2,10 @@
 const ADMIN_PASSWORD = 'hunrise123';
 const ARCHIVE_KEY = 'hrl_archives';
 
+// Firebase config
+const FIREBASE_API_KEY = "AIzaSyDDXdGSp7OiCl-6tQU1Rm2t82xirXH_Icc";
+const FIREBASE_PROJECT_ID = "ifi2liga";
+
 // Admin státusz inicializálása
 let isAdmin = localStorage.getItem('adminStatus') === 'true';
 
@@ -38,23 +42,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Admin panel kezelés
-    // Játékosok betöltése LocalStorage-ból ha léteznek + normalizálás régi mezőkről
-    const savedPlayers = localStorage.getItem('players');
-    if (savedPlayers) {
-        try {
-            const parsed = JSON.parse(savedPlayers);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                players.length = 0;
-                players.push(...parsed.map(normalizePlayer));
-            }
-        } catch (e) {
-            console.log('Nem sikerült betölteni a játékosokat');
-        }
-    }
+    // Játékosok betöltése Firebase-ből
+    loadPlayersFromFirebase();
     
     initAdminPanel();
     loadPlayers();
-    renderArchiveList();
+    // Archives oldal betöltésének az archives.html-ből kezeljük
 });
 
 // Régi mezők átkonvertálása az új struktúrára
@@ -147,73 +140,122 @@ function updateAdminUI() {
     }
 }
 
-// Firebase config - importból elérhető a bajnoksag app.js-ből
-// De itt egyszerűen fetch-vel olvassuk az archívumot
-const FIREBASE_API_KEY = "AIzaSyDDXdGSp7OiCl-6tQU1Rm2t82xirXH_Icc";
-const FIREBASE_PROJECT_ID = "ifi2liga";
-
-// Archív lista renderelése a főoldalon - Firebase-ből olvassa
-async function renderArchiveList() {
-    const listEl = document.getElementById('archiveList');
-    if (!listEl) return;
-
+// ===== JÁTÉKOSOK FIREBASE KEZELÉS =====
+// Játékosok betöltése Firebase-ből
+async function loadPlayersFromFirebase() {
     try {
-        const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/archives?pageSize=50`;
-        const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${FIREBASE_API_KEY}` }
-        });
-
+        const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/players?pageSize=500`;
+        const response = await fetch(url);
+        
         if (!response.ok) {
-            // Fallback: próbáljuk a közvetlen Firestore REST API-t
-            loadArchivesFromFirestore();
+            console.log('Firebase nem elérhető, helyi játékosokat használunk');
+            loadPlayersLocally();
             return;
         }
 
         const data = await response.json();
         const documents = data.documents || [];
 
-        if (documents.length === 0) {
-            listEl.innerHTML = '<p class="muted">Még nincs mentett bajnokság.</p>';
-            return;
-        }
-
-        listEl.innerHTML = documents.map(doc => {
+        players.length = 0;
+        documents.forEach(doc => {
             const fields = doc.fields || {};
-            const name = fields.name?.stringValue || 'Ismeretlen bajnokság';
-            const finishedAt = fields.finishedAt?.timestampValue 
-                ? new Date(fields.finishedAt.timestampValue).toLocaleDateString('hu-HU')
-                : '-';
-            const champion = fields.champion?.mapValue?.fields || {};
-            const champ = champion.winnerName?.stringValue || '-';
-            const pairing = champion.pairing?.stringValue || 'Nincs döntő rögzítve';
-            const score = champion.finalScore?.stringValue ? ` (${champion.finalScore.stringValue})` : '';
+            const player = {
+                id: fields.id?.integerValue || Date.now(),
+                name: fields.name?.stringValue || '',
+                inGameName: fields.inGameName?.stringValue || '',
+                ovr: parseInt(fields.ovr?.integerValue || 80),
+                image: fields.image?.stringValue || '',
+                h2hDivision: fields.h2hDivision?.stringValue || '',
+                managerDivision: fields.managerDivision?.stringValue || '',
+                vsaDivision: fields.vsaDivision?.stringValue || '',
+                actPoints: parseInt(fields.actPoints?.integerValue || 0),
+                bio: fields.bio?.stringValue || ''
+            };
+            players.push(player);
+        });
 
-            return `
-                <div class="archive-card">
-                    <div class="archive-head">
-                        <h3>${name}</h3>
-                        <span class="archive-date">${finishedAt}</span>
-                    </div>
-                    <p class="archive-champ">Bajnok: ${champ}</p>
-                    <p class="archive-final">Döntő: ${pairing}${score}</p>
-                </div>
-            `;
-        }).join('');
+        initAdminPanel();
+        loadPlayers();
+        renderArchiveList();
     } catch (error) {
-        console.error("Archívum betöltési hiba:", error);
-        listEl.innerHTML = '<p class="muted">Hiba az archívum betöltésekor. Később próbálkozz.</p>';
+        console.error('Firebase hiba:', error);
+        loadPlayersLocally();
+        initAdminPanel();
+        loadPlayers();
+        renderArchiveList();
     }
 }
 
-// Alternatív módszer: Firestore SDK-val próbáljuk betölteni
-async function loadArchivesFromFirestore() {
-    // Ez csak akkor működik, ha a módösített bajnoksag/app.js már elérhető
-    // Itt egyenlőre csak fallback hibaüzenetet jelenítek meg
-    const listEl = document.getElementById('archiveList');
-    if (listEl) {
-        listEl.innerHTML = '<p class="muted">Az archívumok betöltése folyamatban...</p>';
+// Helyi játékosok betöltése fallback-ként
+function loadPlayersLocally() {
+    const savedPlayers = localStorage.getItem('players');
+    if (savedPlayers) {
+        try {
+            const parsed = JSON.parse(savedPlayers);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                players.length = 0;
+                players.push(...parsed.map(normalizePlayer));
+            }
+        } catch (e) {
+            console.log('Nem sikerült betölteni a játékosokat');
+        }
     }
 }
+
+// Játékos mentése Firebase-be
+async function savePlayerToFirebase(player) {
+    try {
+        const docId = `player_${player.id}`;
+        const docPath = `projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/players/${docId}`;
+        
+        const body = {
+            fields: {
+                id: { integerValue: player.id },
+                name: { stringValue: player.name },
+                inGameName: { stringValue: player.inGameName },
+                ovr: { integerValue: player.ovr.toString() },
+                image: { stringValue: player.image },
+                h2hDivision: { stringValue: player.h2hDivision },
+                managerDivision: { stringValue: player.managerDivision },
+                vsaDivision: { stringValue: player.vsaDivision },
+                actPoints: { integerValue: player.actPoints.toString() },
+                bio: { stringValue: player.bio }
+            }
+        };
+
+        const response = await fetch(
+            `https://firestore.googleapis.com/v1/${docPath}?key=${FIREBASE_API_KEY}`,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            }
+        );
+
+        if (!response.ok) {
+            console.log('Firebase mentés sikertelen, helyi mentésre váltunk');
+        }
+    } catch (error) {
+        console.error('Firebase mentési hiba:', error);
+    }
+}
+
+// Játékos törlése Firebase-ből
+async function deletePlayerFromFirebase(playerId) {
+    try {
+        const docId = `player_${playerId}`;
+        const docPath = `projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/players/${docId}`;
+
+        await fetch(
+            `https://firestore.googleapis.com/v1/${docPath}?key=${FIREBASE_API_KEY}`,
+            { method: 'DELETE' }
+        );
+    } catch (error) {
+        console.error('Firebase törlés hiba:', error);
+    }
+}
+
+// Archív lista renderelése a főoldalon - Firebase-ből olvassa
 
 // Játékosok adatbázisa
 const players = [
@@ -472,8 +514,9 @@ function showPlayerForm(player) {
             }
         }
         
-        // Mentés LocalStorage-ba
+        // Mentés LocalStorage-ba és Firebase-be
         localStorage.setItem('players', JSON.stringify(players));
+        savePlayerToFirebase(updatedPlayer);
         
         closeModal();
         loadPlayers();
@@ -487,8 +530,10 @@ function showPlayerForm(player) {
     if (!isNewPlayer) {
         document.getElementById('deletePlayerBtn').addEventListener('click', function() {
             if (confirm('Biztos vagy? Ezt nem lehet visszavonni!')) {
-                players.splice(players.findIndex(p => p.id === player.id), 1);
+                const playerId = player.id;
+                players.splice(players.findIndex(p => p.id === playerId), 1);
                 localStorage.setItem('players', JSON.stringify(players));
+                deletePlayerFromFirebase(playerId);
                 closeModal();
                 loadPlayers();
                 alert('Játékos törölve!');
