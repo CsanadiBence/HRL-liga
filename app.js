@@ -5,9 +5,39 @@ const ARCHIVE_KEY = 'hrl_archives';
 // Admin státusz inicializálása
 let isAdmin = localStorage.getItem('adminStatus') === 'true';
 
-document.addEventListener('DOMContentLoaded', function() {});
-// Admin panel kezelés
+// DOMContentLoaded - minden inicializálás itt
 document.addEventListener('DOMContentLoaded', function() {
+    // Hamburger menü kezelés
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const navMenu = document.getElementById('navMenu');
+
+    if (hamburgerBtn && navMenu) {
+        hamburgerBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isActive = navMenu.style.display === 'flex';
+            navMenu.style.display = isActive ? 'none' : 'flex';
+            hamburgerBtn.classList.toggle('active');
+            console.log('Nav menü megjelenítve:', !isActive);
+        });
+
+        // Menü bezárása ha kívülre kattintunk
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.navbar')) {
+                navMenu.style.display = 'none';
+                hamburgerBtn.classList.remove('active');
+            }
+        });
+
+        // Menü bezárása ha linket követnek
+        navMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function() {
+                navMenu.style.display = 'none';
+                hamburgerBtn.classList.remove('active');
+            });
+        });
+    }
+
+    // Admin panel kezelés
     // Játékosok betöltése LocalStorage-ból ha léteznek + normalizálás régi mezőkről
     const savedPlayers = localStorage.getItem('players');
     if (savedPlayers) {
