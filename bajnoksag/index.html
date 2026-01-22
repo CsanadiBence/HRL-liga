@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IFI2 Kupa – Liga rendszer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="main-header">
+    <a href="../index.html" class="btn-back-main">← Vissza</a>
+    <div class="logo-circle">
+      <div class="logo-inner">
+        <span class="logo-ball">⚽</span>
+      </div>
+    </div>
+    <div class="header-text">
+      <h1>HRL KUPA</h1>
+      <p>HunRise Legacy – Házibajnokság</p>
+    </div>
+  </header>
+
+  <div id="adminLoginPanel" class="admin-login-panel">
+    <div id="adminLoggedOut">
+      <span class="admin-label">Admin</span>
+      <input type="password" id="adminPasswordInput" placeholder="Jelszó">
+      <button id="adminLoginBtn">Bejelentkezés</button>
+    </div>
+    <div id="adminLoggedIn" style="display:none;">
+      <span class="admin-label">Admin mód aktív</span>
+      <button id="adminLogoutBtn">Kilépés</button>
+    </div>
+    <p id="adminLoginMsg" class="muted"></p>
+  </div>
+
+  <nav class="top-nav">
+    <button data-view="dashboard" class="nav-btn active">Csoportkör</button>
+    <button data-view="matches" class="nav-btn">Csoport meccsek</button>
+    <button data-view="playoff" class="nav-btn">Playoff</button>
+    <button data-view="groups" class="nav-btn admin-only-nav">Csoportok kezelése</button>
+    <button data-view="players" class="nav-btn admin-only-nav">Játékosok</button>
+    <button data-view="playoff_admin" class="nav-btn admin-only-nav">Playoff Admin</button>
+  </nav>
+
+  <main class="container">
+
+    <section id="view-dashboard" class="view active">
+      <div class="card">
+        <h2>Csoportkör tabellák</h2>
+        <p class="muted">A pontszámok már tartalmazzák az esetleges módosításokat (levonás/hozzáadás).</p>
+      </div>
+      <div id="tables-container"></div>
+    </section>
+
+    <section id="view-playoff" class="view">
+      <div class="playoff-main">
+        <div class="playoff-left">
+          <div class="card">
+            <h2>Play-in eredmények</h2>
+            <p class="muted">A Play-in körből továbbjutó játékosok</p>
+          </div>
+          <div id="playoff-playin-results" class="playin-results-container"></div>
+        </div>
+        <div class="playoff-right">
+          <div class="card">
+            <h2>Egyenes kieséses szakasz</h2>
+            <p class="muted">Nyolcaddöntőtől a Döntőig</p>
+          </div>
+          <div id="playoff-bracket-container" class="playoff-bracket-wrapper"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-matches" class="view">
+      <div class="card">
+        <h2>Lejátszott csoportmeccsek</h2>
+        <button id="clearAllBtn" class="danger-btn admin-only-inline">Összes adat törlése</button>
+      </div>
+      <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Csoport</th>
+                <th>Hazai</th>
+                <th>Eredmény</th>
+                <th>Vendég</th>
+                <th>Dátum</th>
+                <th class="admin-only-inline">Műveletek</th>
+            </tr>
+        </thead>
+        <tbody id="matchesTableBody"></tbody>
+      </table>
+    </section>
+
+    <section id="view-groups" class="view admin-only-view">
+      <div class="card">
+        <h2>Csoportok kezelése</h2>
+        <div class="form-row">
+          <div class="form-field"><label>Csoport neve</label><input id="groupNameInput" type="text"></div>
+          <button id="addGroupBtn">Létrehozás</button>
+        </div>
+        <p id="groupMessage" class="muted"></p>
+      </div>
+      <div class="card"><h3>Meglévő csoportok</h3><ul id="groupList" class="simple-list"></ul></div>
+      
+      <div class="card">
+        <h2>Csoportmeccs rögzítése</h2>
+        <div class="form-row">
+          <div class="form-field"><label>Csoport</label><select id="matchGroupSelect"></select></div>
+          <div class="form-field"><label>Hazai</label><select id="homePlayerSelect"></select></div>
+          <div class="form-field small"><label>Gól</label><input id="homeGoalsInput" type="number" min="0" value="0"></div>
+          <div class="form-field small"><label>Gól</label><input id="awayGoalsInput" type="number" min="0" value="0"></div>
+          <div class="form-field"><label>Vendég</label><select id="awayPlayerSelect"></select></div>
+          <button id="addMatchBtn">Mentés</button>
+        </div>
+        <p id="matchMessage" class="muted"></p>
+      </div>
+    </section>
+
+    <section id="view-players" class="view admin-only-view">
+      <div class="card">
+        <h2>Játékos hozzáadása</h2>
+        <div class="form-row">
+          <div class="form-field"><label>Név</label><input id="playerNameInput" type="text"></div>
+          <div class="form-field"><label>Csoport</label><select id="playerGroupSelect"></select></div>
+          <button id="addPlayerBtn">Mentés</button>
+        </div>
+        <p id="playerMessage" class="muted"></p>
+      </div>
+      <div class="card">
+        <h3>Játékoslista & Pontmódosítások</h3>
+        <span id="playerCountInfo" class="muted"></span>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Név</th>
+              <th>Csoport</th>
+              <th>Pontmódosítás</th> <th>Művelet</th>
+            </tr>
+          </thead>
+          <tbody id="playersTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="view-playoff_admin" class="view admin-only-view">
+      <div class="card">
+        <h2>Play-in párok beállítása</h2>
+        <div id="playin-pair-setup"></div>
+        <p id="playinMessage" class="muted"></p>
+      </div>
+      <div class="card">
+        <h2>Playoff meccs rögzítése</h2>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Forduló</label>
+            <select id="playoffRoundSelect">
+              <option value="playin">Play-in</option>
+              <option value="round16">Nyolcaddöntő</option>
+              <option value="quarter">Negyeddöntő</option>
+              <option value="semi">Elődöntő</option>
+              <option value="final">Döntő</option>
+              <option value="bronze">Bronzmeccs</option>
+            </select>
+          </div>
+          <div class="form-field"><label>Hazai</label><select id="playoffHomeSelect"></select></div>
+          <div class="form-field small"><label>Gól</label><input id="playoffHomeGoals" type="number" min="0" value="0"></div>
+          <div class="form-field small"><label>Gól</label><input id="playoffAwayGoals" type="number" min="0" value="0"></div>
+          <div class="form-field"><label>Vendég</label><select id="playoffAwaySelect"></select></div>
+          <button id="addPlayoffMatchBtn">Mentés</button>
+        </div>
+        <p id="playoffMatchMessage" class="muted"></p>
+      </div>
+      <div class="card">
+        <h2>Bajnokság lezárása (archív mentés)</h2>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 60%;"><label>Bajnokság neve</label><input id="archiveNameInput" type="text" placeholder="Pl. 2026 Téli Kupa"></div>
+          <button id="saveArchiveBtn" class="primary-btn">Mentés archívumba</button>
+        </div>
+        <p id="archiveMessage" class="muted"></p>
+      </div>
+    </section>
+    <section id="view-playoff_admin" class="view admin-only-view">
+    <div class="card">
+        <h2>Rögzített Playoff meccsek kezelése</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Forduló</th>
+                    <th>Párosítás</th>
+                    <th>Eredmény</th>
+                    <th>Művelet</th>
+                </tr>
+            </thead>
+            <tbody id="adminPlayoffMatchesTableBody"></tbody>
+        </table>
+    </div>
+</section>
+
+  </main>
+
+  <footer class="main-footer">IFI2 Kupa – Firebase backend</footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
