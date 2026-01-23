@@ -144,7 +144,7 @@ function updateAdminUI() {
 // Játékosok betöltése Firebase-ből
 async function loadPlayersFromFirebase() {
     try {
-        const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/players?pageSize=500`;
+        const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/roster?pageSize=500`;
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -176,7 +176,6 @@ async function loadPlayersFromFirebase() {
 
         initAdminPanel();
         loadPlayers();
-        renderArchiveList();
     } catch (error) {
         console.error('Firebase hiba:', error);
         loadPlayersLocally();
@@ -206,7 +205,7 @@ function loadPlayersLocally() {
 async function savePlayerToFirebase(player) {
     try {
         const docId = `player_${player.id}`;
-        const docPath = `projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/players/${docId}`;
+        const docPath = `projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/roster/${docId}`;
         
         const body = {
             fields: {
@@ -244,7 +243,7 @@ async function savePlayerToFirebase(player) {
 async function deletePlayerFromFirebase(playerId) {
     try {
         const docId = `player_${playerId}`;
-        const docPath = `projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/players/${docId}`;
+        const docPath = `projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/roster/${docId}`;
 
         await fetch(
             `https://firestore.googleapis.com/v1/${docPath}?key=${FIREBASE_API_KEY}`,
