@@ -287,7 +287,12 @@ const players = [
 // Játékosok listájának feltöltése
 function loadPlayers() {
     const grid = document.getElementById('playersGrid');
-    if (!grid) return;
+    if (!grid) {
+        console.log('playersGrid nem található');
+        return;
+    }
+    
+    console.log('loadPlayers: ' + players.length + ' játékos');
     
     grid.innerHTML = players.map(player => `
         <div class="player-card">
@@ -300,12 +305,33 @@ function loadPlayers() {
                 <p class="player-rating">OVR: ${player.ovr}</p>
                 <p class="player-rating" style="margin-top: 6px;">VSA: ${player.vsaDivision || '-'} | H2H: ${player.h2hDivision || '-'} | Manager: ${player.managerDivision || '-'}</p>
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button class="btn-small" onclick="openModal(${player.id})">Profil</button>
-                    ${isAdmin ? `<button class="btn-small edit-player-btn" onclick="editPlayer(${player.id})" style="background-color: #ff9800;">Szerkesztés</button>` : ''}
+                    <button class="btn-small btn-profil">Profil</button>
+                    ${isAdmin ? `<button class="btn-small btn-szerkesztes" style="background-color: #ff9800;">Szerkesztés</button>` : ''}
                 </div>
             </div>
         </div>
     `).join('');
+    
+    // Delegated event listeners a gombokon
+    const playersGrid = document.getElementById('playersGrid');
+    if (playersGrid) {
+        playersGrid.addEventListener('click', function(e) {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            
+            if (btn.textContent === 'Profil') {
+                const card = btn.closest('.player-card');
+                const playerName = card.querySelector('h3').textContent;
+                const player = players.find(p => p.name === playerName);
+                if (player) window.openModal(player.id);
+            } else if (btn.textContent === 'Szerkesztés') {
+                const card = btn.closest('.player-card');
+                const playerName = card.querySelector('h3').textContent;
+                const player = players.find(p => p.name === playerName);
+                if (player) window.editPlayer(player.id);
+            }
+        });
+    }
     
     // Add gomb kezelése
     const addBtn = document.getElementById('addPlayerBtn');
@@ -581,6 +607,7 @@ function openModal(playerId) {
         </div>
         
         <p class="detail-bio">${player.bio}</p>
+        ${isAdmin ? `<button class="btn-small" onclick="editPlayer(${player.id})" style="margin-top: 20px; background-color: #ff9800;">Szerkesztés</button>` : ''}
     `;
 
     modal.classList.add('show');
@@ -593,6 +620,12 @@ function closeModal() {
         modal.classList.remove('show');
     }
 }
+
+// Tegyük globálissá a gombok által hívott függvényeket, hogy inline onclick működjön
+window.openModal = openModal;
+window.editPlayer = editPlayer;
+window.addNewPlayer = addNewPlayer;
+window.closeModal = closeModal;
 
 // Modal bezárása kívülre kattintás
 window.onclick = function(event) {
