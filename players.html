@@ -15,19 +15,27 @@
                 <img src="kislogo.png" alt="HunRise Logo" class="nav-logo">
                 <div class="logo-text">HunRise <span>Legacy</span></div>
             </div>
-            <ul class="nav-links">
-                <li><a href="bajnoksag/index.html">Bajnokságok</a></li>
-                <li><a href="index.html">Rólunk</a></li>
-                <li><a href="players.html">Játékosok</a></li>
-            </ul>
-            <div class="admin-panel">
-                <div id="adminLoggedOut">
-                    <input type="password" id="adminPassword" placeholder="Admin jelszó" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc;">
-                    <button id="adminLoginBtn" style="padding: 6px 12px; margin-left: 5px; background: #00d4ff; color: black; border: none; border-radius: 4px; cursor: pointer; font-weight: 700;">Bejelentkezés</button>
-                </div>
-                <div id="adminLoggedIn" style="display: none;">
-                    <span style="color: #00d4ff; font-weight: 700; margin-right: 10px;">Admin mód aktív</span>
-                    <button id="adminLogoutBtn" style="padding: 6px 12px; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 700;">Kilépés</button>
+            <a href="bajnoksag/index.html" class="nav-link-main">Bajnokságok</a>
+            
+            <button class="hamburger" id="hamburgerBtn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <div class="nav-menu" id="navMenu">
+                <a href="index.html" class="nav-menu-link">Rólunk</a>
+                <a href="players.html" class="nav-menu-link">Játékosok</a>
+                <a href="archives.html" class="nav-menu-link">📜 Mentett bajnokságok</a>
+                <div class="admin-section">
+                    <div id="adminLoggedOut" class="admin-form">
+                        <input type="password" id="adminPassword" placeholder="Admin jelszó" class="admin-input">
+                        <button id="adminLoginBtn" class="admin-btn">Bejelentkezés</button>
+                    </div>
+                    <div id="adminLoggedIn" style="display: none;" class="admin-active">
+                        <span class="admin-status">✓ Admin mód</span>
+                        <button id="adminLogoutBtn" class="admin-logout">Kilépés</button>
+                    </div>
                 </div>
             </div>
         </nav>
