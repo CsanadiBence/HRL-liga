@@ -27,7 +27,8 @@ body {
 .main-header {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
+  gap: 12px;
   padding: 16px 24px;
   background: linear-gradient(135deg, var(--primary-deep), rgba(2,8,12,0.8));
   border-bottom: 1px solid rgba(212,175,55,0.12);
@@ -81,6 +82,11 @@ body {
   margin: 0;
   font-size: 26px;
   letter-spacing: 0.08em;
+}
+
+.header-text h1 br,
+.header-text p br {
+  display: none;
 }
 
 .header-text p {
@@ -659,21 +665,26 @@ button:active {
   background: none;
   border: none;
   cursor: pointer;
-  gap: 5px;
-  padding: 8px;
+  gap: 4px;
+  padding: 0;
   margin-left: auto;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  align-items: center;
+  justify-content: center;
 }
 
 .hamburger span {
-  width: 25px;
-  height: 3px;
+  width: 18px;
+  height: 2px;
   background-color: #0ea5e9;
   border-radius: 2px;
   transition: 0.3s;
 }
 
 .hamburger.active span:nth-child(1) {
-  transform: rotate(45deg) translate(8px, 8px);
+  transform: rotate(45deg) translate(6px, 6px);
 }
 
 .hamburger.active span:nth-child(2) {
@@ -681,21 +692,21 @@ button:active {
 }
 
 .hamburger.active span:nth-child(3) {
-  transform: rotate(-45deg) translate(7px, -7px);
+  transform: rotate(-45deg) translate(6px, -6px);
 }
 
 .nav-menu {
   display: none;
   position: fixed;
-  top: 110px;
-  right: 20px;
+  top: 80px;
+  right: 100px;
   background: rgba(2, 18, 24, 0.95);
   border: 1px solid rgba(14, 165, 233, 0.3);
   border-radius: 8px;
   backdrop-filter: blur(10px);
   flex-direction: column;
   gap: 10px;
-  padding: 20px;
+  padding: 10px;
   min-width: 250px;
   z-index: 1001;
   box-shadow: 0 8px 24px rgba(14, 165, 233, 0.3), 0 8px 16px rgba(0, 0, 0, 0.8);
@@ -762,4 +773,83 @@ button:active {
 
 .admin-logout:hover {
   background: #ff6666;
+}
+
+/* MOBILE RESPONSIVE */
+@media (max-width: 768px) {
+  .main-header {
+    padding: 10px 14px;
+    gap: 8px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+
+  .btn-back-main {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .logo-circle {
+    width: 42px;
+    height: 42px;
+    border: 2px solid var(--accent-gold);
+  }
+
+  .logo-inner {
+    width: 30px;
+    height: 30px;
+  }
+
+  .logo-ball {
+    font-size: 16px;
+  }
+
+  .header-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .header-text h1 {
+    font-size: 0.75rem;
+    line-height: 1.1;
+  }
+
+  .header-text h1 br,
+  .header-text p br {
+    display: block;
+  }
+
+  .header-text p {
+    font-size: 0.65rem;
+    line-height: 1.1;
+  }
+
+  .hamburger {
+    position: static;
+    margin-left: 10px;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+  }
+
+  .nav-menu {
+    top: 70px;
+    right: 10px;
+    min-width: 220px;
+    padding: 15px;
+  }
+
+  .top-nav {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .nav-btn {
+    font-size: 11px;
+    padding: 8px 12px;
+  }
 }
