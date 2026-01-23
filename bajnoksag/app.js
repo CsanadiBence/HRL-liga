@@ -74,6 +74,26 @@ function updateAdminUI() {
 }
 updateAdminUI();
 
+// --- HAMBURGER MENÜ KEZELÉS ---
+const hamburgerBtn = document.getElementById('hamburgerBtnBaj');
+const navMenu = document.getElementById('navMenuBaj');
+
+if (hamburgerBtn && navMenu) {
+  hamburgerBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const isActive = navMenu.style.display === 'flex';
+    navMenu.style.display = isActive ? 'none' : 'flex';
+    hamburgerBtn.classList.toggle('active');
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.main-header')) {
+      navMenu.style.display = 'none';
+      hamburgerBtn.classList.remove('active');
+    }
+  });
+}
+
 // --- LISTENERS ---
 function startListeners() {
   unsub.push(onSnapshot(groupsCol, snap => { state.groups = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUIFast(); }));
