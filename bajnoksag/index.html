@@ -18,20 +18,27 @@
       <h1>HRL KUPA</h1>
       <p>HunRise Legacy – Házibajnokság</p>
     </div>
-  </header>
+    
+    <button class="hamburger" id="hamburgerBtnBaj">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
 
-  <div id="adminLoginPanel" class="admin-login-panel">
-    <div id="adminLoggedOut">
-      <span class="admin-label">Admin</span>
-      <input type="password" id="adminPasswordInput" placeholder="Jelszó">
-      <button id="adminLoginBtn">Bejelentkezés</button>
+    <div class="nav-menu" id="navMenuBaj">
+      <div class="admin-section">
+        <div id="adminLoggedOut">
+          <input type="password" id="adminPasswordInput" placeholder="Admin jelszó" class="admin-input">
+          <button id="adminLoginBtn" class="admin-btn">Bejelentkezés</button>
+          <p id="adminLoginMsg" class="muted" style="margin-top: 8px; font-size: 0.85rem;"></p>
+        </div>
+        <div id="adminLoggedIn" style="display:none;" class="admin-active">
+          <span class="admin-status">✓ Admin mód</span>
+          <button id="adminLogoutBtn" class="admin-logout">Kilépés</button>
+        </div>
+      </div>
     </div>
-    <div id="adminLoggedIn" style="display:none;">
-      <span class="admin-label">Admin mód aktív</span>
-      <button id="adminLogoutBtn">Kilépés</button>
-    </div>
-    <p id="adminLoginMsg" class="muted"></p>
-  </div>
+  </header>
 
   <nav class="top-nav">
     <button data-view="dashboard" class="nav-btn active">Csoportkör</button>
