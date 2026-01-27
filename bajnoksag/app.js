@@ -276,35 +276,115 @@ function renderPlayersTable() {
   playersTableBody.innerHTML = "";
   if (state.players.length === 0) {
     playersTableBody.innerHTML = "<tr><td colspan='4' class='muted'>Nincs játékos</td></tr>";
-    playerCountInfo.textContent = "";
+    if (playerCountInfo) playerCountInfo.textContent = "";
     return;
   }
   const sorted = [...state.players].sort((a,b) => a.name.localeCompare(b.name));
-  playerCountInfo.textContent = `Összesen: ${sorted.length}`;
+  if (playerCountInfo) playerCountInfo.textContent = `Összesen: ${sorted.length}`;
   sorted.forEach(p => {
     const tr = document.createElement("tr");
     const group = getGroupById(p.groupId);
+    const groupOptions = getSortedGroups();
     tr.innerHTML = `
-      <td class="left">${p.name}</td>
-      <td>${group?.name || "-"}</td>
+      <td class="left">
+        <span class="player-name" data-id="${p.id}">${p.name}</span>
+        <input type="text" class="player-name-input" data-id="${p.id}" value="${p.name}" style="display:none; width:140px;">
+      </td>
+      <td>
+        <span class="player-group-label" data-id="${p.id}">${group?.name || "-"}</span>
+        <select class="player-group-select" data-id="${p.id}" style="display:none; min-width:90px;">
+          <option value="">--</option>
+          ${groupOptions.map(g => `<option value="${g.id}" ${g.id === p.groupId ? 'selected' : ''}>${g.name}</option>`).join("")}
+        </select>
+      </td>
       <td>
         <input type="number" class="penalty-input" data-id="${p.id}" value="${p.adjustment || 0}" style="width:50px;">
         <button class="save-penalty-btn" data-id="${p.id}" style="padding:4px 8px; font-size:11px;">Mentés</button>
       </td>
-      <td><button data-id="${p.id}" class="danger-btn del-player">Törlés</button></td>
+      <td>
+        <button class="edit-player-btn" data-id="${p.id}">Szerkeszt</button>
+        <button class="save-player-btn" data-id="${p.id}" style="display:none;">Mentés</button>
+        <button class="cancel-player-btn" data-id="${p.id}" style="display:none;">Mégse</button>
+        <button data-id="${p.id}" class="danger-btn del-player">Törlés</button>
+      </td>
     `;
     playersTableBody.appendChild(tr);
   });
 
-  document.querySelectorAll(".save-penalty-btn").forEach(btn => {
-    btn.onclick = async () => {
-      const pid = btn.dataset.id;
-      const val = parseInt(document.querySelector(`.penalty-input[data-id="${pid}"]`).value) || 0;
+}
+
+function enterPlayerEdit(pid) {
+  if (!isAdmin) return;
+  togglePlayerEditUI(pid, true);
+}
+
+function exitPlayerEdit(pid) {
+  togglePlayerEditUI(pid, false);
+}
+
+function togglePlayerEditUI(pid, editing) {
+  const nameSpan = document.querySelector(`.player-name[data-id="${pid}"]`);
+  const nameInput = document.querySelector(`.player-name-input[data-id="${pid}"]`);
+  const groupSpan = document.querySelector(`.player-group-label[data-id="${pid}"]`);
+  const groupSelect = document.querySelector(`.player-group-select[data-id="${pid}"]`);
+  const editBtn = document.querySelector(`.edit-player-btn[data-id="${pid}"]`);
+  const saveBtn = document.querySelector(`.save-player-btn[data-id="${pid}"]`);
+  const cancelBtn = document.querySelector(`.cancel-player-btn[data-id="${pid}"]`);
+  if (nameSpan && nameInput) { nameSpan.style.display = editing ? "none" : ""; nameInput.style.display = editing ? "inline-block" : "none"; }
+  if (groupSpan && groupSelect) { groupSpan.style.display = editing ? "none" : ""; groupSelect.style.display = editing ? "inline-block" : "none"; }
+  if (editBtn) editBtn.style.display = editing ? "none" : "";
+  if (saveBtn) saveBtn.style.display = editing ? "" : "none";
+  if (cancelBtn) cancelBtn.style.display = editing ? "" : "none";
+}
+
+async function savePlayerEdit(pid) {
+  if (!isAdmin) return;
+  const player = getPlayerById(pid);
+  const nameInput = document.querySelector(`.player-name-input[data-id="${pid}"]`);
+  const groupSelect = document.querySelector(`.player-group-select[data-id="${pid}"]`);
+  if (!player || !nameInput || !groupSelect) return;
+  const newName = nameInput.value.trim();
+  const newGroupId = groupSelect.value;
+  if (!newName || !newGroupId) {
+    alert("Adj meg nevet és csoportot.");
+    return;
+  }
+  if (state.players.some(p => p.id !== pid && p.groupId === newGroupId && p.name.toLowerCase() === newName.toLowerCase())) {
+    alert("Ilyen nevű játékos már van ebben a csoportban.");
+    return;
+  }
+  await updateDoc(doc(db, "players", pid), { name: newName, groupId: newGroupId });
+  exitPlayerEdit(pid);
+}
+
+if (playersTableBody) {
+  playersTableBody.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const pid = btn.dataset.id;
+    if (btn.classList.contains("save-penalty-btn")) {
+      const val = parseInt(document.querySelector(`.penalty-input[data-id="${pid}"]`)?.value) || 0;
       await updateDoc(doc(db, "players", pid), { adjustment: val });
       alert("Pontmódosítás mentve!");
-    };
+      return;
+    }
+    if (btn.classList.contains("del-player")) {
+      deletePlayer(pid);
+      return;
+    }
+    if (btn.classList.contains("edit-player-btn")) {
+      enterPlayerEdit(pid);
+      return;
+    }
+    if (btn.classList.contains("cancel-player-btn")) {
+      exitPlayerEdit(pid);
+      return;
+    }
+    if (btn.classList.contains("save-player-btn")) {
+      savePlayerEdit(pid);
+      return;
+    }
   });
-  document.querySelectorAll(".del-player").forEach(btn => btn.onclick = () => deletePlayer(btn.dataset.id));
 }
 
 async function deletePlayer(pid) {
@@ -464,15 +544,20 @@ function getLosers(round) {
 }
 
 function renderPlayinResults() {
-  if (!playoffPlayinResults) return;
-  playoffPlayinResults.innerHTML = "";
+  const playinResultsContainer = document.getElementById("playoff-playin-results");
+  if (!playinResultsContainer) return;
   
   const playinMatches = state.playoffMatches.filter(m => m.round === 'playin');
   
+  // Mentsd el a jelenlegi display állapotot
+  const currentDisplay = playinResultsContainer.style.display;
+  
   if (playinMatches.length === 0) {
-    playoffPlayinResults.innerHTML = '<div class="playin-no-match">Még nincs Play-in eredmény</div>';
+    playinResultsContainer.innerHTML = '<div class="playin-no-match">Még nincs Play-in eredmény</div>';
     return;
   }
+  
+  playinResultsContainer.innerHTML = "";
   
   playinMatches.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0)).forEach(m => {
     const h = getPlayerById(m.homeId);
@@ -492,8 +577,13 @@ function renderPlayinResults() {
         <div class="playin-team-name ${winner === 'away' ? 'winner' : ''}">${a?.name || "?"}</div>
       </div>
     `;
-    playoffPlayinResults.appendChild(matchDiv);
+    playinResultsContainer.appendChild(matchDiv);
   });
+  
+  // Állítsd vissza a display állapotot
+  if (currentDisplay) {
+    playinResultsContainer.style.display = currentDisplay;
+  }
 }
 
 function renderPlayoffBracket() {
@@ -794,6 +884,24 @@ function updateArchiveDisplay() {
 
 if (saveArchiveBtn) {
   saveArchiveBtn.onclick = saveArchive;
+}
+
+// Play-in toggle gomb
+const togglePlayinBtn = document.getElementById("togglePlayinBtn");
+
+if (togglePlayinBtn) {
+  togglePlayinBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const playinResults = document.getElementById("playoff-playin-results");
+    if (!playinResults) return;
+    
+    const isHidden = playinResults.style.display === "none";
+    playinResults.style.display = isHidden ? "grid" : "none";
+    
+    togglePlayinBtn.innerHTML = `<span id="togglePlayinIcon">${isHidden ? "▲" : "▼"}</span> Play-in meccsek ${isHidden ? "elrejtése" : "megjelenítése"}`;
+  });
 }
 
 // Kezdés
