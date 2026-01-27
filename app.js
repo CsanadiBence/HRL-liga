@@ -1,6 +1,7 @@
 // Admin jelszó (szinkronban a bajnoksaggal)
 const ADMIN_PASSWORD = 'hunrise123';
 const ARCHIVE_KEY = 'hrl_archives';
+const APPLICANTS_KEY = 'hrl_applicants';
 
 // Firebase config
 const FIREBASE_API_KEY = "AIzaSyDDXdGSp7OiCl-6tQU1Rm2t82xirXH_Icc";
@@ -47,8 +48,45 @@ document.addEventListener('DOMContentLoaded', function() {
     
     initAdminPanel();
     loadPlayers();
+    
+    // Join modal kezelés
+    const joinBtn = document.getElementById('joinBtn');
+    const joinModal = document.getElementById('joinModal');
+    const joinForm = document.getElementById('joinForm');
+    
+    if (joinBtn && joinModal && joinForm) {
+        joinBtn.addEventListener('click', function() {
+            joinModal.classList.add('show');
+        });
+        
+        joinForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitJoinForm();
+        });
+    }
+    
     // Archives oldal betöltésének az archives.html-ből kezeljük
 });
+
+// Champion csillagok megjelenítése/elrejtése
+function toggleChampionStars(mode) {
+    const selectId = mode === 'h2h' ? 'joinH2hDivision' : mode === 'vsa' ? 'joinVsaDivision' : 'joinManagerDivision';
+    const starsId = mode === 'h2h' ? 'joinH2hStars' : mode === 'vsa' ? 'joinVsaStars' : 'joinManagerStars';
+    
+    const selectEl = document.getElementById(selectId);
+    const starsEl = document.getElementById(starsId);
+    
+    if (selectEl && starsEl) {
+        if (selectEl.value === 'Champion') {
+            starsEl.style.display = 'block';
+            starsEl.required = true;
+        } else {
+            starsEl.style.display = 'none';
+            starsEl.required = false;
+            starsEl.value = '';
+        }
+    }
+}
 
 // Régi mezők átkonvertálása az új struktúrára
 function normalizePlayer(p) {
@@ -626,6 +664,179 @@ window.openModal = openModal;
 window.editPlayer = editPlayer;
 window.addNewPlayer = addNewPlayer;
 window.closeModal = closeModal;
+window.closeJoinModal = closeJoinModal;
+
+// Join modal függvények
+function closeJoinModal() {
+    const joinModal = document.getElementById('joinModal');
+    if (joinModal) {
+        joinModal.classList.remove('show');
+    }
+}
+
+function submitJoinForm() {
+    const name = document.getElementById('joinName').value.trim();
+    const gameName = document.getElementById('joinGameName').value.trim();
+    const ovr = document.getElementById('joinOvr').value;
+    const h2hDivisionSelect = document.getElementById('joinH2hDivision').value;
+    const vsaDivisionSelect = document.getElementById('joinVsaDivision').value;
+    const managerDivisionSelect = document.getElementById('joinManagerDivision').value;
+    const contact = document.getElementById('joinContact').value.trim();
+    const messageEl = document.getElementById('joinMessage');
+    
+    // Champion ellenőrzés és csillagok hozzáadása
+    let h2hDivision = h2hDivisionSelect;
+    let vsaDivision = vsaDivisionSelect;
+    let managerDivision = managerDivisionSelect;
+    
+    if (h2hDivisionSelect === 'Champion') {
+        const stars = document.getElementById('joinH2hStars').value;
+        if (!stars) {
+            messageEl.textContent = 'Add meg a H2H Champion csillagok számát!';
+            messageEl.style.color = '#ef4444';
+            return;
+        }
+        h2hDivision = `${stars}⭐`;
+    }
+    
+    if (vsaDivisionSelect === 'Champion') {
+        const stars = document.getElementById('joinVsaStars').value;
+        if (!stars) {
+            messageEl.textContent = 'Add meg a VSA Champion csillagok számát!';
+            messageEl.style.color = '#ef4444';
+            return;
+        }
+        vsaDivision = `${stars}⭐`;
+    }
+    
+    if (managerDivisionSelect === 'Champion') {
+        const stars = document.getElementById('joinManagerStars').value;
+        if (!stars) {
+            messageEl.textContent = 'Add meg a Manager Champion csillagok számát!';
+            messageEl.style.color = '#ef4444';
+            return;
+        }
+        managerDivision = `${stars}⭐`;
+    }
+    
+    if (!name || !gameName || !ovr || !h2hDivisionSelect || !vsaDivisionSelect || !managerDivisionSelect || !contact) {
+        messageEl.textContent = 'Kérjük, töltsd ki az összes mezőt!';
+        messageEl.style.color = '#ef4444';
+        return;
+    }
+    
+    const applicant = {
+        id: Date.now(),
+        name: name,
+        gameName: gameName,
+        ovr: parseInt(ovr),
+        h2hDivision: h2hDivision,
+        vsaDivision: vsaDivision,
+        managerDivision: managerDivision,
+        contact: contact,
+        appliedAt: new Date().toLocaleString('hu-HU')
+    };
+    
+    // LocalStorage mentés
+    let applicants = JSON.parse(localStorage.getItem(APPLICANTS_KEY) || '[]');
+    applicants.push(applicant);
+    localStorage.setItem(APPLICANTS_KEY, JSON.stringify(applicants));
+    
+    // Firebase mentés
+    saveApplicantToFirebase(applicant);
+    
+    // Email küldés Formsubmit-en keresztül
+    sendEmailViaFormsubmit(applicant, messageEl);
+}
+
+async function sendEmailViaFormsubmit(applicant, messageEl) {
+    try {
+        // Web3Forms API használata FormData-val
+        const formData = new FormData();
+        formData.append("access_key", "92793734-483e-4b53-9d0a-10d35716fb84");
+        formData.append("subject", "HunRise Legacy - Új jelentkezés");
+        formData.append("from_name", "HunRise Legacy Rendszer");
+        formData.append("name", applicant.name);
+        formData.append("email", applicant.contact);
+        formData.append("message", 
+            `Új jelentkezés érkezett!\n\n` +
+            `Név: ${applicant.name}\n` +
+            `In-Game név: ${applicant.gameName}\n` +
+            `OVR: ${applicant.ovr}\n` +
+            `H2H Division: ${applicant.h2hDivision}\n` +
+            `VSA Division: ${applicant.vsaDivision}\n` +
+            `Manager Division: ${applicant.managerDivision}\n` +
+            `Elérhetőség: ${applicant.contact}\n\n` +
+            `Jelentkezés időpontja: ${applicant.appliedAt}`
+        );
+        
+        const response = await fetch("https://api.web3forms.com/submit", {
+            method: "POST",
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            messageEl.textContent = '✓ Sikeresen beküldted a jelentkezést! Email értesítés elküldve.';
+            messageEl.style.color = '#28a745';
+        } else {
+            throw new Error(data.message || 'Email küldés sikertelen');
+        }
+        
+        document.getElementById('joinForm').reset();
+        setTimeout(() => {
+            closeJoinModal();
+            messageEl.textContent = '';
+        }, 2500);
+    } catch (error) {
+        console.error('Email küldési hiba:', error);
+        messageEl.textContent = '✓ Jelentkezés mentve Firebase-be!';
+        messageEl.style.color = '#28a745';
+        
+        document.getElementById('joinForm').reset();
+        setTimeout(() => {
+            closeJoinModal();
+            messageEl.textContent = '';
+        }, 2500);
+    }
+}
+
+async function saveApplicantToFirebase(applicant) {
+    try {
+        const docId = `applicant_${applicant.id}`;
+        const docPath = `projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/applicants/${docId}`;
+        
+        const body = {
+            fields: {
+                id: { integerValue: applicant.id.toString() },
+                name: { stringValue: applicant.name },
+                gameName: { stringValue: applicant.gameName },
+                ovr: { integerValue: applicant.ovr.toString() },
+                h2hDivision: { stringValue: applicant.h2hDivision },
+                vsaDivision: { stringValue: applicant.vsaDivision },
+                managerDivision: { stringValue: applicant.managerDivision },
+                contact: { stringValue: applicant.contact },
+                appliedAt: { stringValue: applicant.appliedAt }
+            }
+        };
+
+        const response = await fetch(
+            `https://firestore.googleapis.com/v1/${docPath}?key=${FIREBASE_API_KEY}`,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            }
+        );
+
+        if (response.ok) {
+            console.log('Jelentkezés sikeresen mentve Firebase-be');
+        }
+    } catch (error) {
+        console.error('Firebase mentési hiba:', error);
+    }
+}
 
 // Modal bezárása kívülre kattintás
 window.onclick = function(event) {
