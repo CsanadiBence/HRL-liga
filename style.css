@@ -804,6 +804,7 @@ body {
 .archives-section {
     padding: 60px 0 70px;
     background: #0d0d0d;
+    margin-top: 80px;
 }
 .archive-cards {
     display: grid;
