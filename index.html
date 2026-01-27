@@ -47,7 +47,7 @@
                 <h1>HUNRISE <br><span class="highlight">LEGACY</span></h1>
                 <p>A magyar FIFA közösség új korszaka. Csatlakozz a ligához és válj legendává!</p>
                 <div class="hero-btns">
-                    <a href="#" class="btn btn-primary">CSATLAKOZZ MOST</a>
+                    <button id="joinBtn" class="btn btn-primary">CSATLAKOZZ MOST</button>
                     <a href="bajnoksag/index.html" class="btn btn-secondary">LIGA INFÓK</a>
                 </div>
             </div>
@@ -58,6 +58,67 @@
             </div>
         </div>
     </section>
+
+    <!-- Join modal -->
+    <div id="joinModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <button class="btn-back-modal" onclick="closeJoinModal()">← Bezárás</button>
+            <h2 style="margin-top: 20px; margin-bottom: 20px;">Csatlakozz a HunRise Legacy-hez!</h2>
+            <form id="joinForm" style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label style="color: #00d4ff; font-weight: 700; display: block; margin-bottom: 5px;">Valós név:</label>
+                    <input type="text" id="joinName" placeholder="Pl. János Kovács" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px;" required>
+                </div>
+                <div>
+                    <label style="color: #00d4ff; font-weight: 700; display: block; margin-bottom: 5px;">In-Game név:</label>
+                    <input type="text" id="joinGameName" placeholder="Pl. KJ_Beast_99" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px;" required>
+                </div>
+                <div>
+                    <label style="color: #00d4ff; font-weight: 700; display: block; margin-bottom: 5px;">OVR:</label>
+                    <input type="number" id="joinOvr" placeholder="85" min="70" max="130" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px;" required>
+                </div>
+                <div>
+                    <label style="color: #00d4ff; font-weight: 700; display: block; margin-bottom: 5px;">VSA Division:</label>
+                    <select id="joinVsaDivision" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px;" required onchange="toggleChampionStars('vsa')">
+                        <option value="">-- Válassz --</option>
+                        <option value="World Class">World Class</option>
+                        <option value="Legendary">Legendary</option>
+                        <option value="Champion">Champion</option>
+                    </select>
+                    <input type="number" id="joinVsaStars" placeholder="Csillagok száma (1-5)" min="1" max="5" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px; margin-top: 8px; display: none;">
+                </div>
+                <div>
+                    <label style="color: #00d4ff; font-weight: 700; display: block; margin-bottom: 5px;">H2H Division:</label>
+                    <select id="joinH2hDivision" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px;" required onchange="toggleChampionStars('h2h')">
+                        <option value="">-- Válassz --</option>
+                        <option value="World Class">World Class</option>
+                        <option value="Legendary">Legendary</option>
+                        <option value="Champion">Champion</option>
+                    </select>
+                    <input type="number" id="joinH2hStars" placeholder="Csillagok száma (1-5)" min="1" max="5" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px; margin-top: 8px; display: none;">
+                </div>
+                <div>
+                    <label style="color: #00d4ff; font-weight: 700; display: block; margin-bottom: 5px;">Manager Mode Division:</label>
+                    <select id="joinManagerDivision" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px;" required onchange="toggleChampionStars('manager')">
+                        <option value="">-- Válassz --</option>
+                        <option value="World Class">World Class</option>
+                        <option value="Legendary">Legendary</option>
+                        <option value="Champion">Champion</option>
+                    </select>
+                    <input type="number" id="joinManagerStars" placeholder="Csillagok száma (1-5)" min="1" max="5" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px; margin-top: 8px; display: none;">
+                </div>
+                <div>
+                    <label style="color: #00d4ff; font-weight: 700; display: block; margin-bottom: 5px;">Elérhetőség (E-mail / Facebook):</label>
+                    <input type="text" id="joinContact" placeholder="Pl. janos@example.com vagy Facebook_name" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px;" required>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1; padding: 12px; font-size: 14px; border: none; cursor: pointer;">Küldés</button>
+                    <button type="button" onclick="closeJoinModal()" style="flex: 1; padding: 12px; font-size: 14px; border: none; cursor: pointer; background: #666; color: #fff; border-radius: 5px; font-weight: 700;">Mégse</button>
+                </div>
+                <p id="joinMessage" class="muted" style="text-align: center; margin-top: 10px;"></p>
+            </form>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>
