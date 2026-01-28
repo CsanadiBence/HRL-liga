@@ -724,7 +724,157 @@ function loadAboutModal() {
     ];
     
     let html = `
-        <h2 style="color: #00d4ff; text-align: center; margin-bottom: 30px;">👤 Adminok</h2>
+        <h2 style="color: #00d4ff; text-align: center; margin-bottom: 30px;">� HunRise Legacy</h2>
+        
+        <!-- Csoportszabályzat gomb -->
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <button id="toggleGroupRulesBtn" style="width: 100%; padding: 15px; background: linear-gradient(135deg, rgba(10,132,255,0.2), rgba(212,175,55,0.15)); border: 1px solid rgba(212,175,55,0.3); border-radius: 6px; color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 1rem;">
+                <span id="toggleGroupRulesIcon">▼</span> Csoportszabályzat megjelenítése
+            </button>
+        </div>
+        
+        <!-- Csoportszabályzat tartalom -->
+        <div id="groupRulesContent" style="display: none; margin-bottom: 30px;">
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #00d4ff; margin-bottom: 15px;">📢 Általános szabályok a csoportban</h4>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>Egymás segítése, tanácsadás</li>
+                    <li>Tiszteletteljes kommunikáció</li>
+                    <li>Eredmények, sikerek megosztása</li>
+                    <li>A csoport fő témája a labdarúgás, de más téma is megengedett, a szabályok betartása mellett</li>
+                </ul>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,0,0,0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #ff4444; margin-bottom: 15px;">❌ Nem megengedett magatartás</h4>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>Sértő, tiszteletlen viselkedés</li>
+                    <li>Csalás, szabályok kijátszása</li>
+                    <li>Házi bajnokság zavarása</li>
+                    <li>Spamelés</li>
+                    <li>Politizálás, valamint bármilyen 18+ tartalom megosztása</li>
+                </ul>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #00d4ff; margin-bottom: 15px;">🎯 Kötelező activity pontok</h4>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>Minden tagnak minimum <strong style="color: #00d4ff;">1000 activity pontot</strong> kell összegyűjtenie hetente.</li>
+                    <li>A heti számítási ciklus: <strong style="color: #00d4ff;">szerda 20:00 – szerda 19:59</strong>.</li>
+                </ul>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #00d4ff; margin-bottom: 15px;">💬 Kommunikációs szabályok</h4>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>Indokolatlan <strong>@mindenki</strong> használata nem engedélyezett</li>
+                    <li>Az adminokat ne keresd privátban, minden játékkal kapcsolatos ügyet a csoportban intézz</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Bajnokság szabályzat gomb -->
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <button id="toggleChampRulesBtn" style="width: 100%; padding: 15px; background: linear-gradient(135deg, rgba(10,132,255,0.2), rgba(212,175,55,0.15)); border: 1px solid rgba(212,175,55,0.3); border-radius: 6px; color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 1rem;">
+                <span id="toggleChampRulesIcon">▼</span> Bajnokság szabályzat megjelenítése
+            </button>
+        </div>
+        
+        <!-- Bajnokság szabályzat tartalom -->
+        <div id="champRulesContent" style="display: none; margin-bottom: 30px;">
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #00d4ff; margin-bottom: 15px;">📑 Általános információk</h4>
+                <p style="color: #ccc; line-height: 1.8;">📊 <a href="https://liga.hrl.hu/bajnoksag/" style="color: #00d4ff;">https://liga.hrl.hu/bajnoksag/</a> - Tabella követése</p>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>👥 Résztvevők száma: <strong style="color: #00d4ff;">32 fő</strong></li>
+                    <li>📂 Bajnokság szerkezete: Csoportkör → Rájátszás (Play-in) → Döntő szakasz</li>
+                    <li>⚠️ A csoportbeosztás utáni OVR fejlődés nem von maga után csoport újra osztást</li>
+                    <li>❗A Messenger csoportban 18 éven felüli tevékenység megosztása szabályszegés!</li>
+                </ul>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #00d4ff; margin-bottom: 15px;">🔵 Csoportkör</h4>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>8 csoport, mindegyikben 4 játékos</li>
+                    <li>Csoporton belül mindenki mindenkivel kétszer játszik (oda-vissza)</li>
+                    <li>🥇 1. helyezett: automatikusan továbbjut a Play-offba</li>
+                    <li>🥈🥉 2. és 3. helyezett: Play-in (rájátszás)</li>
+                    <li>❌ 4. helyezett: kiesik</li>
+                </ul>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #00d4ff; margin-bottom: 15px;">🔥 Döntő szakasz</h4>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>🟡 Nyolcaddöntők: 2 mérkőzés (oda-vissza)</li>
+                    <li>🟠 Negyeddöntők: 2 mérkőzés (oda-vissza)</li>
+                    <li>🔴 Elődöntők: 2 mérkőzés (oda-vissza)</li>
+                    <li>🏅 Döntő: 1 mérkőzés (döntetlen esetén újrajátszás)</li>
+                    <li>🥉 3. helyért: 1 mérkőzés (döntetlen esetén újrajátszás)</li>
+                </ul>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,165,0,0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #ffa500; margin-bottom: 15px;">⏱️ Időpontok és jelzések</h4>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>📤 Eredményeket a <strong>hazai játékos</strong> küldi be 10 percen belül</li>
+                    <li>✅ Meccs előtt mindkét félnek jeleznie kell a jelenlétet</li>
+                    <li>⏱️ Késések esetén büntetőpont:<br>
+                        • Csoportkör: 10 perc után<br>
+                        • Play-in: 15 perc után<br>
+                        • Nyolcaddöntő: 20 perc után<br>
+                        • Negyeddöntő: 25 perc után<br>
+                        • Elődöntő/Döntő: 30 perc után
+                    </li>
+                    <li>📌 Időpont módosítás legalább 1 órával a meccs előtt</li>
+                    <li>❌ Kezdés előtt 1 órán belül nincs időpont-módosítás</li>
+                </ul>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,0,0,0.4); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #ff4444; margin-bottom: 15px;">⚠️ Büntetőpontok</h4>
+                <p style="color: #ff8888; margin-bottom: 10px; font-weight: bold;">❗Az 5. büntetőpont után azonnali kizárás!</p>
+                <p style="color: #ccc; margin-bottom: 15px;">Büntetőpontot kaphatsz:</p>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>Félidőn belüli 5+ perc félpályás passzolgatás</li>
+                    <li>Eredmény nem beküldése 10 percen belül</li>
+                    <li>Ellenfél játékának szabotálása</li>
+                    <li>Bajnokságtól független képek küldése (ha nem törlöd 1 percen belül)</li>
+                    <li>Meccs nem a ligában történő lejátszása</li>
+                    <li>Házi bajnokság zavarása</li>
+                </ul>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #00d4ff; margin-bottom: 15px;">💻 Technikai szabályok</h4>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>🔁 Ha kidobja a játék: újra játszás</li>
+                    <li>Játék közbeni kidobás:<br>
+                        • Több mint 50% hátralévő idő → újrajátszás<br>
+                        • Kevesebb mint 50% → eredmény érvényes
+                    </li>
+                    <li>📷 Technikai probléma esetén kötelező a screenshot (idővel, állással)</li>
+                    <li>⚠️ Csalás = automatikus kizárás</li>
+                </ul>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: #00d4ff; margin-bottom: 15px;">📅 Fontos dátumok</h4>
+                <ul style="color: #ccc; line-height: 1.8;">
+                    <li>Bajnokság időtartama: <strong style="color: #00d4ff;">2026.01.12. – 2026.01.30.</strong></li>
+                    <li>Csoportmérkőzések vége: <strong style="color: #00d4ff;">2026.01.23.</strong></li>
+                    <li>🏅 Döntő és 3. helyért: elhalasztás nem megengedett</li>
+                </ul>
+            </div>
+            
+            <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(212,175,55,0.1)); border-radius: 12px;">
+                <p style="color: #d4af37; font-weight: bold; margin: 0;">⚡️ Minden szabályzat-módosítás a csoportba küldés után automatikusan elfogadott! ⚡️</p>
+            </div>
+        </div>
+        
+        <!-- Adminok -->
+        <h2 style="color: #00d4ff; text-align: center; margin-bottom: 30px; margin-top: 20px;">👤 Adminok</h2>
         <p style="text-align: center; color: #888; margin-bottom: 30px;">A HunRise Legacy csapatát irányító adminok</p>
     `;
     
@@ -749,6 +899,34 @@ function loadAboutModal() {
     });
     
     aboutModalContent.innerHTML = html;
+    
+    // Csoportszabályzat toggle gomb funkció
+    const toggleGroupBtn = document.getElementById('toggleGroupRulesBtn');
+    const groupRulesContent = document.getElementById('groupRulesContent');
+    const toggleGroupIcon = document.getElementById('toggleGroupRulesIcon');
+    
+    if (toggleGroupBtn && groupRulesContent) {
+        toggleGroupBtn.addEventListener('click', function() {
+            const isHidden = groupRulesContent.style.display === 'none';
+            groupRulesContent.style.display = isHidden ? 'block' : 'none';
+            toggleGroupIcon.textContent = isHidden ? '▲' : '▼';
+            toggleGroupBtn.innerHTML = `<span id="toggleGroupRulesIcon">${isHidden ? '▲' : '▼'}</span> Csoportszabályzat ${isHidden ? 'elrejtése' : 'megjelenítése'}`;
+        });
+    }
+    
+    // Bajnokság szabályzat toggle gomb funkció
+    const toggleChampBtn = document.getElementById('toggleChampRulesBtn');
+    const champRulesContent = document.getElementById('champRulesContent');
+    const toggleChampIcon = document.getElementById('toggleChampRulesIcon');
+    
+    if (toggleChampBtn && champRulesContent) {
+        toggleChampBtn.addEventListener('click', function() {
+            const isHidden = champRulesContent.style.display === 'none';
+            champRulesContent.style.display = isHidden ? 'block' : 'none';
+            toggleChampIcon.textContent = isHidden ? '▲' : '▼';
+            toggleChampBtn.innerHTML = `<span id="toggleChampRulesIcon">${isHidden ? '▲' : '▼'}</span> Bajnokság szabályzat ${isHidden ? 'elrejtése' : 'megjelenítése'}`;
+        });
+    }
 }
 
 function submitJoinForm() {
@@ -936,8 +1114,87 @@ function loadRulesModal() {
     if (!rulesModalContent) return;
     
     const html = `
-        <h2 style="color: #00d4ff; text-align: center; margin-bottom: 10px;">📜 HunRise Legacy csoportszabályzat 📜</h2>
-        <p style="text-align: center; color: #888; margin-bottom: 30px;">Weboldal: <a href="https://liga.hrl.hu/" style="color: #00d4ff;">https://liga.hrl.hu/</a></p>
+        <h2 style="color: #00d4ff; text-align: center; margin-bottom: 10px;">⚽ HunRise Legacy ⚽</h2>
+        <p style="text-align: center; color: #ccc; font-size: 1.1rem; line-height: 1.6; margin-bottom: 30px;">
+            Üdvözlünk a HunRise Legacy FIFA közösségében! Csatlakozz hozzánk és válj részévé a legnagyobb magyar FIFA ligának!
+        </p>
+        
+        <div style="background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(212,175,55,0.15)); border: 1px solid rgba(0,212,255,0.3); border-radius: 12px; padding: 25px; margin-bottom: 25px;">
+            <h3 style="color: #00d4ff; margin-bottom: 20px; text-align: center;">🎯 Amit nyújtunk</h3>
+            <div style="display: grid; gap: 15px;">
+                <div style="display: flex; align-items: start; gap: 15px;">
+                    <span style="font-size: 24px; min-width: 30px;">🏆</span>
+                    <div>
+                        <h4 style="color: #d4af37; margin: 0 0 5px 0;">Tourban való részvétel</h4>
+                        <p style="color: #ccc; margin: 0; line-height: 1.6;">Vegyél részt a heti tournamenteken és bizonyítsd rátermettséged!</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 15px;">
+                    <span style="font-size: 24px; min-width: 30px;">🌐</span>
+                    <div>
+                        <h4 style="color: #d4af37; margin: 0 0 5px 0;">A liga saját weboldalai</h4>
+                        <p style="color: #ccc; margin: 0; line-height: 1.6;">Professzionális weboldal eredményekkel, táblázatokkal és statisztikákkal.</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 15px;">
+                    <span style="font-size: 24px; min-width: 30px;">💬</span>
+                    <div>
+                        <h4 style="color: #d4af37; margin: 0 0 5px 0;">Messenger csoport - folyamatos segítségnyújtás</h4>
+                        <p style="color: #ccc; margin: 0; line-height: 1.6;">Aktív közösség, ahol mindig kaphatsz segítséget és tanácsot.</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 15px;">
+                    <span style="font-size: 24px; min-width: 30px;">⚔️</span>
+                    <div>
+                        <h4 style="color: #d4af37; margin: 0 0 5px 0;">Ligán belüli házi bajnokságok</h4>
+                        <p style="color: #ccc; margin: 0; line-height: 1.6;">Rendszeres bajnokságok, izgalmas meccsek és díjazások!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(255,100,100,0.1)); border: 1px solid rgba(212,175,55,0.4); border-radius: 12px; padding: 25px; margin-bottom: 25px;">
+            <h3 style="color: #d4af37; margin-bottom: 20px; text-align: center;">📋 Amit várunk</h3>
+            <div style="display: grid; gap: 15px;">
+                <div style="display: flex; align-items: start; gap: 15px;">
+                    <span style="font-size: 24px; min-width: 30px;">📊</span>
+                    <div>
+                        <h4 style="color: #00d4ff; margin: 0 0 5px 0;">118 OVR minimum</h4>
+                        <p style="color: #ccc; margin: 0; line-height: 1.6;">Csapatod legalább 118-as ovr legyen a csatlakozáshoz.</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 15px;">
+                    <span style="font-size: 24px; min-width: 30px;">🎂</span>
+                    <div>
+                        <h4 style="color: #00d4ff; margin: 0 0 5px 0;">16+ életkor</h4>
+                        <p style="color: #ccc; margin: 0; line-height: 1.6;">Minimum 16 éves kort várunk el a közösség tagjaitól.</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 15px;">
+                    <span style="font-size: 24px; min-width: 30px;">⚡</span>
+                    <div>
+                        <h4 style="color: #00d4ff; margin: 0 0 5px 0;">1000 activity pont/hét</h4>
+                        <p style="color: #ccc; margin: 0; line-height: 1.6;">Heti rendszerességgel legalább 1000 activity pontot kell teljesítened.</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 15px;">
+                    <span style="font-size: 24px; min-width: 30px;">✅</span>
+                    <div>
+                        <h4 style="color: #00d4ff; margin: 0 0 5px 0;">Szabályzat(ok) betartása</h4>
+                        <p style="color: #ccc; margin: 0; line-height: 1.6;">A közösség szabályainak következetes betartása kötelező.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <button id="toggleRulesBtn" style="width: 100%; padding: 15px; background: linear-gradient(135deg, rgba(10,132,255,0.2), rgba(212,175,55,0.15)); border: 1px solid rgba(212,175,55,0.3); border-radius: 6px; color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 1rem;">
+                <span id="toggleRulesIcon">▼</span> Csoportszabályzat megjelenítése
+            </button>
+        </div>
+        
+        <div id="rulesContent" style="display: none;">
+        <p style="text-align: center; color: #888; margin-bottom: 20px;">Weboldal: <a href="https://liga.hrl.hu/" style="color: #00d4ff;">https://liga.hrl.hu/</a></p>
         
         <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
             <h3 style="color: #00d4ff; margin-bottom: 15px;">📢 Általános szabályok a csoportban</h3>
@@ -1035,9 +1292,24 @@ function loadRulesModal() {
         <div style="text-align: center; margin-top: 30px; padding: 20px; background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(212,175,55,0.1)); border-radius: 12px;">
             <h3 style="color: #d4af37; margin-bottom: 10px;">Érezd jól magad és sok sikereket kíván a HunRise Legacy vezetősége!</h3>
         </div>
+        </div>
     `;
     
     rulesModalContent.innerHTML = html;
+    
+    // Toggle gomb funkció
+    const toggleBtn = document.getElementById('toggleRulesBtn');
+    const rulesContent = document.getElementById('rulesContent');
+    const toggleIcon = document.getElementById('toggleRulesIcon');
+    
+    if (toggleBtn && rulesContent) {
+        toggleBtn.addEventListener('click', function() {
+            const isHidden = rulesContent.style.display === 'none';
+            rulesContent.style.display = isHidden ? 'block' : 'none';
+            toggleIcon.textContent = isHidden ? '▲' : '▼';
+            toggleBtn.innerHTML = `<span id="toggleRulesIcon">${isHidden ? '▲' : '▼'}</span> Csoportszabályzat ${isHidden ? 'elrejtése' : 'megjelenítése'}`;
+        });
+    }
 }
 
 
