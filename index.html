@@ -24,7 +24,7 @@
             </button>
 
             <div class="nav-menu" id="navMenu">
-                <a href="index.html" class="nav-menu-link">Rólunk</a>
+                <a href="#" id="aboutLink" class="nav-menu-link">Rólunk</a>
                 <a href="players.html" class="nav-menu-link">Játékosok</a>
                 <a href="archives.html" class="nav-menu-link">📜 Mentett bajnokságok</a>
                 <div class="admin-section">
@@ -48,7 +48,7 @@
                 <p>A magyar FIFA közösség új korszaka. Csatlakozz a ligához és válj legendává!</p>
                 <div class="hero-btns">
                     <button id="joinBtn" class="btn btn-primary">CSATLAKOZZ MOST</button>
-                    <a href="bajnoksag/index.html" class="btn btn-secondary">LIGA INFÓK</a>
+                    <button id="rulesBtn" class="btn btn-secondary">LIGA INFÓK</button>
                 </div>
             </div>
             
@@ -117,6 +117,26 @@
                 </div>
                 <p id="joinMessage" class="muted" style="text-align: center; margin-top: 10px;"></p>
             </form>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="aboutModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <button class="btn-back-modal" onclick="closeAboutModal()">← Bezárás</button>
+            <div id="aboutModalContent" style="margin-top: 20px;">
+                <!-- Dinamikusan betöltődik JS-ből -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Rules Modal -->
+    <div id="rulesModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <button class="btn-back-modal" onclick="closeRulesModal()">← Bezárás</button>
+            <div id="rulesModalContent" style="margin-top: 20px;">
+                <!-- Dinamikusan betöltődik JS-ből -->
+            </div>
         </div>
     </div>
 
