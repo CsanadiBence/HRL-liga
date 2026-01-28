@@ -653,7 +653,7 @@ function renderAdminPlayoffMatches() {
 
     adminTableBody.innerHTML = "";
     if (state.playoffMatches.length === 0) {
-        adminTableBody.innerHTML = "<tr><td colspan='4' class='muted'>Nincs rögzített playoff meccs</td></tr>";
+        adminTableBody.innerHTML = "<tr><td colspan='5' class='muted'>Nincs rögzített playoff meccs</td></tr>";
         return;
     }
 
@@ -666,15 +666,41 @@ function renderAdminPlayoffMatches() {
         bronze: "Bronzmeccs"
     };
 
+    // Duplikáció ellenőrzés - csak akkor hiba, ha túl sok meccs van
+    const duplicates = new Set();
+    const pairKeys = new Map();
+    
+    state.playoffMatches.forEach(m => {
+        const key = `${m.round}-${[m.homeId, m.awayId].sort().join('-')}`;
+        pairKeys.set(key, (pairKeys.get(key) || 0) + 1);
+    });
+    
+    // Jelöljük duplikáltnak, ha túl sok meccs van (final/bronze: >1, többi: >2)
+    pairKeys.forEach((count, key) => {
+        const round = key.split('-')[0];
+        const maxAllowed = (round === 'final' || round === 'bronze') ? 1 : 2;
+        if (count > maxAllowed) {
+            duplicates.add(key);
+        }
+    });
+
     state.playoffMatches.forEach(m => {
         const h = getPlayerById(m.homeId);
         const a = getPlayerById(m.awayId);
+        const key = `${m.round}-${[m.homeId, m.awayId].sort().join('-')}`;
+        const isDuplicate = duplicates.has(key);
         const tr = document.createElement("tr");
+        
+        if (isDuplicate) {
+            tr.style.backgroundColor = "rgba(255, 68, 68, 0.2)";
+            tr.style.borderLeft = "3px solid #ff4444";
+        }
 
         tr.innerHTML = `
             <td>${roundNames[m.round] || m.round}</td>
-            <td class="left">${h?.name || "?"} vs ${a?.name || "?"}</td>
+            <td class="left">${h?.name || "?"} vs ${a?.name || "?"} ${isDuplicate ? '<span style="color: #ff4444; font-weight: bold;">⚠️ DUPLIKÁLT</span>' : ''}</td>
             <td>${m.homeGoals}:${m.awayGoals}</td>
+            <td>${new Date(m.createdAt?.seconds * 1000 || Date.now()).toLocaleString('hu-HU', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</td>
             <td><button data-id="${m.id}" class="danger-btn del-playoff-match">Törlés</button></td>
         `;
         adminTableBody.appendChild(tr);
@@ -821,9 +847,35 @@ if (addPlayoffMatchBtn) {
           return;
         }
       }
+      
+      // Ellenőrizzük a meccsek számát ugyanazzal a párossal ugyanabban a körben
+      const existingMatches = state.playoffMatches.filter(m => 
+        m.round === round && 
+        ((m.homeId === home && m.awayId === away) || (m.homeId === away && m.awayId === home))
+      );
+      
+      // Döntő és bronzmeccs: max 1 meccs, többi: max 2 meccs (oda-visszavágó)
+      const maxMatches = (round === 'final' || round === 'bronze') ? 1 : 2;
+      
+      if (existingMatches.length >= maxMatches) {
+        const msg = maxMatches === 1 
+          ? "⚠️ Már van meccs ezzel a párossal! (Döntő/Bronz - nincs visszavágó)"
+          : "⚠️ Már 2 meccs van ezzel a párossal! (oda-visszavágó teljes)";
+        playoffMatchMessage.textContent = msg;
+        playoffMatchMessage.style.color = "#ff4444";
+        setTimeout(() => {
+          playoffMatchMessage.style.color = "";
+        }, 3000);
+        return;
+      }
+      
       await addDoc(playoffMatchesCol, { round, homeId: home, awayId: away, homeGoals: hg, awayGoals: ag, createdAt: serverTimestamp() });
       playoffHomeGoals.value = playoffAwayGoals.value = "0";
       playoffMatchMessage.textContent = "Meccs mentve";
+      playoffMatchMessage.style.color = "#00d4ff";
+      setTimeout(() => {
+        playoffMatchMessage.textContent = "";
+      }, 2000);
     };
 }
 
