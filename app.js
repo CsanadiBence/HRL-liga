@@ -66,6 +66,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Archives oldal betöltésének az archives.html-ből kezeljük
+    
+    // Rólunk modal kezelés
+    const aboutLink = document.getElementById('aboutLink');
+    const aboutModal = document.getElementById('aboutModal');
+    
+    if (aboutLink && aboutModal) {
+        aboutLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            loadAboutModal();
+            aboutModal.classList.add('show');
+            navMenu.style.display = 'none';
+            hamburgerBtn.classList.remove('active');
+        });
+    }
+    
+    // Rules modal kezelés
+    const rulesBtn = document.getElementById('rulesBtn');
+    const rulesModal = document.getElementById('rulesModal');
+    
+    if (rulesBtn && rulesModal) {
+        rulesBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            loadRulesModal();
+            rulesModal.classList.add('show');
+        });
+    }
 });
 
 // Champion csillagok megjelenítése/elrejtése
@@ -674,6 +700,57 @@ function closeJoinModal() {
     }
 }
 
+function closeAboutModal() {
+    const aboutModal = document.getElementById('aboutModal');
+    if (aboutModal) {
+        aboutModal.classList.remove('show');
+    }
+}
+
+function loadAboutModal() {
+    const aboutModalContent = document.getElementById('aboutModalContent');
+    if (!aboutModalContent) return;
+    
+    const admins = [
+        { name: 'Gál Milán', username: 'gmilan06', role: 'fő admin', responsibility: 'mindenért és mindenkiért felelős' },
+        { name: 'Csanádi Bence', username: 'Bence', role: 'admin', responsibility: 'weboldalért felelős' },
+        { name: 'Pardi Szabolcs', username: 'HPSZ', role: 'admin', responsibility: 'tournament felelős' },
+        { name: 'Botos Szabolcs', username: 'nagiogate', role: 'admin', responsibility: 'tournament és marketing felelős' },
+        { name: 'Csanádi Gergő', username: 'Gery', role: 'admin', responsibility: 'activity pontért és bajnokság eredményekért felelős' },
+        { name: 'Homoki Balázs', username: 'hbalázs2', role: 'admin', responsibility: 'új tagokért és tournament figyelmeztetésért felelős' },
+        { name: 'Szabó Dóra', username: 'Dooriii', role: 'admin', responsibility: 'csoport és bajnokság eredmények könyveléséért felelős' },
+        { name: 'Kovács Anna', username: 'Panni', role: 'admin', responsibility: 'activity pontért és bajnokság eredményekért felelős' },
+        { name: 'Kovács Miki', username: 'mikifc', role: 'admin', responsibility: 'marketing felelős' }
+    ];
+    
+    let html = `
+        <h2 style="color: #00d4ff; text-align: center; margin-bottom: 30px;">👤 Adminok</h2>
+        <p style="text-align: center; color: #888; margin-bottom: 30px;">A HunRise Legacy csapatát irányító adminok</p>
+    `;
+    
+    admins.forEach((admin) => {
+        const isFoAdmin = admin.role === 'fő admin';
+        html += `
+        <div style="background: ${isFoAdmin ? 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(212,175,55,0.15))' : 'rgba(0,0,0,0.3)'}; border: 1px solid ${isFoAdmin ? '#00d4ff' : 'rgba(0,212,255,0.2)'}; border-radius: 12px; padding: 20px; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #00d4ff, #d4af37); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; color: #0a0a0a;">
+                    ${admin.name.charAt(0)}
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <h3 style="margin: 0; color: #00d4ff; font-size: 1.2rem;">${admin.name} ${isFoAdmin ? '⭐' : ''}</h3>
+                    <p style="margin: 5px 0 0 0; color: #888; font-size: 0.9rem;">@${admin.username}</p>
+                </div>
+            </div>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <p style="margin: 0; color: #d4af37; font-weight: 600; font-size: 0.95rem;">${admin.responsibility}</p>
+            </div>
+        </div>
+        `;
+    });
+    
+    aboutModalContent.innerHTML = html;
+}
+
 function submitJoinForm() {
     const name = document.getElementById('joinName').value.trim();
     const gameName = document.getElementById('joinGameName').value.trim();
@@ -753,11 +830,11 @@ async function sendEmailViaFormsubmit(applicant, messageEl) {
     try {
         // Web3Forms API használata FormData-val
         const formData = new FormData();
-        formData.append("access_key", "92793734-483e-4b53-9d0a-10d35716fb84");
+        formData.append("access_key", "e25eb3b2-cf45-4303-b8c6-b775b2c55b9a");
         formData.append("subject", "HunRise Legacy - Új jelentkezés");
         formData.append("from_name", "HunRise Legacy Rendszer");
         formData.append("name", applicant.name);
-        formData.append("email", applicant.contact);
+        formData.append("email", applicant.contact); // Jelentkező elérhetősége
         formData.append("message", 
             `Új jelentkezés érkezett!\n\n` +
             `Név: ${applicant.name}\n` +
@@ -768,9 +845,7 @@ async function sendEmailViaFormsubmit(applicant, messageEl) {
             `Manager Division: ${applicant.managerDivision}\n` +
             `Elérhetőség: ${applicant.contact}\n\n` +
             `Jelentkezés időpontja: ${applicant.appliedAt}`
-        );
-        
-        const response = await fetch("https://api.web3forms.com/submit", {
+        );        const response = await fetch("https://api.web3forms.com/submit", {
             method: "POST",
             body: formData
         });
@@ -848,5 +923,121 @@ window.onclick = function(event) {
 
 // Oldal betöltésekor
 document.addEventListener('DOMContentLoaded', loadPlayers);
+
+function closeRulesModal() {
+    const rulesModal = document.getElementById('rulesModal');
+    if (rulesModal) {
+        rulesModal.classList.remove('show');
+    }
+}
+
+function loadRulesModal() {
+    const rulesModalContent = document.getElementById('rulesModalContent');
+    if (!rulesModalContent) return;
+    
+    const html = `
+        <h2 style="color: #00d4ff; text-align: center; margin-bottom: 10px;">📜 HunRise Legacy csoportszabályzat 📜</h2>
+        <p style="text-align: center; color: #888; margin-bottom: 30px;">Weboldal: <a href="https://liga.hrl.hu/" style="color: #00d4ff;">https://liga.hrl.hu/</a></p>
+        
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #00d4ff; margin-bottom: 15px;">📢 Általános szabályok a csoportban</h3>
+            <ul style="color: #ccc; line-height: 1.8;">
+                <li>Egymás segítése, tanácsadás</li>
+                <li>Tiszteletteljes kommunikáció</li>
+                <li>Eredmények, sikerek megosztása</li>
+                <li>A csoport fő témája a labdarúgás, de más téma is megengedett, a szabályok betartása mellett</li>
+            </ul>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,0,0,0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #ff4444; margin-bottom: 15px;">❌ Nem megengedett magatartás</h3>
+            <ul style="color: #ccc; line-height: 1.8;">
+                <li>Sértő, tiszteletlen viselkedés</li>
+                <li>Csalás, szabályok kijátszása</li>
+                <li>Házi bajnokság zavarása</li>
+                <li>Spamelés</li>
+                <li>Politizálás, valamint bármilyen 18+ tartalom megosztása</li>
+            </ul>
+            <p style="color: #ff8888; margin-top: 15px; font-style: italic;">Ezek a szabálysértések következményekkel jár(hat)nak, a súlyosságtól függően esetleges kizárással.</p>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #00d4ff; margin-bottom: 15px;">🎯 Kötelező activity pontok</h3>
+            <ul style="color: #ccc; line-height: 1.8;">
+                <li>Minden tagnak minimum <strong style="color: #00d4ff;">1000 activity pontot</strong> kell összegyűjtenie hetente.</li>
+                <li>A heti számítási ciklus: <strong style="color: #00d4ff;">szerda 20:00 – szerda 19:59</strong>.</li>
+                <li>Aki ezt nem teljesíti, a határidő lejárta előtt egy-két nappal figyelmeztetést kap.</li>
+                <li>Ha a határidő lejártáig sem teljesíti az 1000 pontot, késleltetett határidő után sem, akkor kizárásra kerül a ligából.</li>
+            </ul>
+            
+            <h4 style="color: #d4af37; margin-top: 20px; margin-bottom: 10px;">❗ Rendkívüli elfoglaltság / mentesség</h4>
+            <ul style="color: #ccc; line-height: 1.8;">
+                <li>Ha rendkívüli elfoglaltság miatt nem tudsz aktív lenni, előre jelezd az adminoknak.</li>
+                <li>Indokolt esetben felmentést kaphatsz az activity pont alól.</li>
+                <li>Ugyanez vonatkozik egészségügyi állapotra is, azonban aki visszaél ezekkel a lehetőségekkel és kiderül, azonnali kizárásra kerül a ligából.</li>
+                <li>Mindezekből <strong style="color: #00d4ff;">2 hét</strong> vehető igénybe és az activity pontokat vagy előre vagy utólag kell pótolni, ellenkező esetben a ligából való kizárást vonhat maga után.</li>
+            </ul>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(212,175,55,0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #d4af37; margin-bottom: 15px;">🎁 Nyereményjáték</h3>
+            <p style="color: #ccc; line-height: 1.8;">
+                Minden szezon során, aki a kötelező heti 1000 pont felett, további pontokat termel, pontosabban az 1000 többszöröseit, 
+                akkor amennyiszer 1000 pontot termelt a kötelező pontok felett, annyi esélye lesz majd a nyereményjátékban.
+            </p>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #00d4ff; margin-bottom: 15px;">🎮 Tournament Szabályzat</h3>
+            <ul style="color: #ccc; line-height: 1.8;">
+                <li>A Tournament hétköznap fix <strong style="color: #00d4ff;">8 főből</strong> áll.</li>
+                <li>A résztvevők előre ki vannak választva a stabilitás és hatékonyság érdekében.</li>
+                <li>Új fix tagok felvételére tartalékosként van lehetőség azok számára, akik elérték a <strong style="color: #00d4ff;">VSA 50 csillagot</strong>, vagy kiemelkedő teljesítményt nyújtanak a közösségi tourban.</li>
+                <li>Fix tournament tagoknak a minimum elvárás <strong style="color: #00d4ff;">30+ gól</strong>. Egymást követő 2. sikertelen teljesítés után ideiglenesen leváltásra kerül és a tartalékosok kapnak lehetőséget. Elmulasztás esetén 24 órás felfüggesztésre kerül.</li>
+                <li>Hétvégenként közösségi tour van.</li>
+                <li>Közösségi tourban nincs alap elvárás, de a kiemelkedő eredményeket figyelembe vesszük.</li>
+            </ul>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #00d4ff; margin-bottom: 15px;">🏆 Házi bajnokság</h3>
+            <ul style="color: #ccc; line-height: 1.8;">
+                <li>Minden hónap <strong style="color: #00d4ff;">1-én</strong> kezdődik a bajnokság, melyről leghamarabb 1 héttel, legkésőbb 3 nappal korábban van előzetes tájékoztatás.</li>
+                <li>A meccsek minden hétköznap <strong style="color: #00d4ff;">19:30 és 20:30</strong> között vannak, ±30 perc eltérés lehetséges.</li>
+                <li>A bajnokság ideje alatt <strong style="color: #ff4444;">tilos ligás meccset elfogadni</strong>.</li>
+                <li>A ligát nem szabad zavarni, figyelj az időpontokra.</li>
+            </ul>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(212,175,55,0.15)); border: 1px solid rgba(0,212,255,0.4); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #00d4ff; margin-bottom: 15px;">👤 Adminok</h3>
+            <ul style="color: #ccc; line-height: 1.8;">
+                <li><strong style="color: #d4af37;">Gál Milán</strong> / gmilan06 – fő admin – mindenért és mindenkiért felelős</li>
+                <li><strong style="color: #00d4ff;">Csanádi Bence</strong> / Bence – admin – weboldalért felelős</li>
+                <li><strong style="color: #00d4ff;">Pardi Szabolcs</strong> / HPSZ – admin – tournament felelős</li>
+                <li><strong style="color: #00d4ff;">Botos Szabolcs</strong> / nagiogate – admin – tournament és marketing felelős</li>
+                <li><strong style="color: #00d4ff;">Csanádi Gergő</strong> / Gery – admin – activity pontért és bajnokság eredményekért felelős</li>
+                <li><strong style="color: #00d4ff;">Homoki Balázs</strong> / hbalázs2 – admin – új tagokért és tournament figyelmeztetésért felelős</li>
+                <li><strong style="color: #00d4ff;">Szabó Dóra</strong> / Dooriii – admin – csoport és bajnokság eredmények könyveléséért felelős</li>
+                <li><strong style="color: #00d4ff;">Kovács Anna</strong> / Panni – admin – activity pontért és bajnokság eredményekért felelős</li>
+                <li><strong style="color: #00d4ff;">Kovács Miki</strong> / mikifc – admin – marketing felelős</li>
+            </ul>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #00d4ff; margin-bottom: 15px;">💬 Kommunikációs szabályok</h3>
+            <ul style="color: #ccc; line-height: 1.8;">
+                <li>Indokolatlan <strong>@mindenki</strong> és szavazás használata nem engedélyezett és figyelmeztetéssel jár. Rendszeres indokolatlan használat 72 órás csoport eltiltást von maga után.</li>
+                <li>Az adminokat ne keresd privátban, minden játékkal kapcsolatos ügyet a csoportban és/vagy a liga falon kell intézni.</li>
+            </ul>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; padding: 20px; background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(212,175,55,0.1)); border-radius: 12px;">
+            <h3 style="color: #d4af37; margin-bottom: 10px;">Érezd jól magad és sok sikereket kíván a HunRise Legacy vezetősége!</h3>
+        </div>
+    `;
+    
+    rulesModalContent.innerHTML = html;
+}
 
 
