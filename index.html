@@ -25,7 +25,13 @@
                 <img src="kislogo.png" alt="HunRise Logo" class="nav-logo">
                 <div class="logo-text">HunRise <span>Legacy</span></div>
             </div>
-            <a href="bajnoksag/index.html" class="nav-link-main">Bajnokságok</a>
+            <div class="championship-dropdown">
+                <button class="nav-link-main championship-btn" id="championshipBtn">Bajnokságok ▼</button>
+                <div class="championship-dropdown-menu" id="championshipMenu">
+                    <a href="bajnoksag/index.html" class="championship-dropdown-item">🏆 Bajnokság</a>
+                    <button id="joinChampionshipBtn" class="championship-dropdown-item championship-join-btn">📝 Bajnokságra jelentkezés</button>
+                </div>
+            </div>
             
             <button class="hamburger" id="hamburgerBtn">
                 <span></span>
@@ -37,6 +43,7 @@
                 <a href="#" id="aboutLink" class="nav-menu-link">Rólunk</a>
                 <a href="players.html" class="nav-menu-link">Játékosok</a>
                 <a href="archives.html" class="nav-menu-link">📜 Mentett bajnokságok</a>
+                <a href="#" id="champApplicantsLink" class="nav-menu-link admin-only-inline" style="display: none;">🎯 Bajnokságra jelentékezők</a>
                 <div class="admin-section">
                     <div id="adminLoggedOut" class="admin-form">
                         <input type="password" id="adminPassword" placeholder="Admin jelszó" class="admin-input">
@@ -55,7 +62,7 @@
         <div class="container">
             <div class="hero-content">
                 <h1>HUNRISE <br><span class="highlight">LEGACY</span></h1>
-                <p>A magyar FIFA közösség új korszaka. Csatlakozz a ligához és válj legendává!</p>
+                <p>A magyar FIFA közösség új korszaka. Csatlakozz a ligához, versenyezz a házi <strong style="color: #d4af37; font-weight: 800; text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);">bajnokságokban</strong> és Élvezd a <strong style="color: #00d4ff; font-weight: 800; text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);">Díjjazást</strong>😉!</p>
                 <div class="hero-btns">
                     <button id="joinBtn" class="btn btn-primary">CSATLAKOZZ MOST</button>
                     <button id="rulesBtn" class="btn btn-secondary">LIGA INFÓK</button>
@@ -151,6 +158,49 @@
         <div class="modal-content" style="max-width: 800px;">
             <button class="btn-back-modal" onclick="closeRulesModal()">← Bezárás</button>
             <div id="rulesModalContent" style="margin-top: 20px;">
+                <!-- Dinamikusan betöltődik JS-ből -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Championship Join Modal -->
+    <div id="championshipJoinModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <button class="btn-back-modal" onclick="closeChampionshipJoinModal()">← Bezárás</button>
+            <h2 style="margin-top: 20px; margin-bottom: 20px; color: #00d4ff; text-align: center;">🏆 Bajnokságra jelentékezés</h2>
+            
+            <div style="background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(212,175,55,0.1)); border: 1px solid rgba(0,212,255,0.3); border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+                <h3 style="color: #d4af37; margin-bottom: 15px; text-align: center;">✨ Csatlakozz a következő bajnoksághoz!</h3>
+                <ul style="color: #ccc; line-height: 1.8; list-style: none; padding: 0;">
+                    <li>🏅 <strong style="color: #00d4ff;">Minimum 32 fős</strong> verseny, csoportkör és kieséses rendszer</li>
+                    <li>🎯 Havi rendszerességgel új bajnokságok</li>
+                    <li>🏆 <strong style="color: #d4af37;">Értékes díjak</strong> a helyezetteknek</li>
+                    <li>📊 Professzionális követés és statisztikák</li>
+                     <!-- <li>⚡ Minimum követelmény: <strong style="color: #00d4ff;">118 OVR</strong></li> -->
+                </ul>
+            </div>
+            
+            <form id="championshipJoinForm" style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label style="color: #00d4ff; font-weight: 700; display: block; margin-bottom: 5px;">Név / In-Game név:</label>
+                    <input type="text" id="champJoinName" placeholder="Pl. János Kovács / KJ_Beast_99" style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #00d4ff; background: #0a0a0a; color: #fff; font-size: 14px;" required>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1; padding: 14px; font-size: 15px; border: none; cursor: pointer;">📩 Jelentékezés</button>
+                    <button type="button" onclick="closeChampionshipJoinModal()" style="flex: 1; padding: 14px; font-size: 15px; border: none; cursor: pointer; background: #666; color: #fff; border-radius: 5px; font-weight: 700;">Mégse</button>
+                </div>
+                <p id="champJoinMessage" class="muted" style="text-align: center; margin-top: 10px;"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Championship Applicants Modal (Admin) -->
+    <div id="champApplicantsModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <button class="btn-back-modal" onclick="closeChampApplicantsModal()">← Bezárás</button>
+            <h2 style="margin-top: 20px; margin-bottom: 20px; color: #00d4ff;">🎯 Bajnokságra jelentékezők</h2>
+            <div id="champApplicantsList" style="margin-top: 20px;">
                 <!-- Dinamikusan betöltődik JS-ből -->
             </div>
         </div>
