@@ -2,6 +2,7 @@
 const ADMIN_PASSWORD = 'hunrise123';
 const ARCHIVE_KEY = 'hrl_archives';
 const APPLICANTS_KEY = 'hrl_applicants';
+const CHAMP_APPLICANTS_KEY = 'hrl_championship_applicants';
 
 // Firebase config
 const FIREBASE_API_KEY = "AIzaSyDDXdGSp7OiCl-6tQU1Rm2t82xirXH_Icc";
@@ -12,6 +13,56 @@ let isAdmin = localStorage.getItem('adminStatus') === 'true';
 
 // DOMContentLoaded - minden inicializálás itt
 document.addEventListener('DOMContentLoaded', function() {
+    // Championship dropdown kezelés
+    const championshipBtn = document.getElementById('championshipBtn');
+    const championshipMenu = document.getElementById('championshipMenu');
+    const joinChampionshipBtn = document.getElementById('joinChampionshipBtn');
+
+    if (championshipBtn && championshipMenu) {
+        championshipBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            championshipMenu.classList.toggle('show');
+        });
+
+        // Dropdown bezárása ha kívülre kattintunk
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.championship-dropdown')) {
+                championshipMenu.classList.remove('show');
+            }
+        });
+    }
+
+    // Bajnokságra jelentkezés gomb - megnyitja a join modalt
+    if (joinChampionshipBtn) {
+        joinChampionshipBtn.addEventListener('click', function() {
+            championshipMenu.classList.remove('show');
+            const champJoinModal = document.getElementById('championshipJoinModal');
+            if (champJoinModal) {
+                champJoinModal.classList.add('show');
+            }
+        });
+    }
+
+    // Championship join form kezelés
+    const championshipJoinForm = document.getElementById('championshipJoinForm');
+    if (championshipJoinForm) {
+        championshipJoinForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitChampionshipJoinForm();
+        });
+    }
+
+    // Championship applicants link (admin only)
+    const champApplicantsLink = document.getElementById('champApplicantsLink');
+    if (champApplicantsLink) {
+        champApplicantsLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            openChampApplicantsModal();
+            navMenu.style.display = 'none';
+            hamburgerBtn.classList.remove('active');
+        });
+    }
+
     // Hamburger menü kezelés
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const navMenu = document.getElementById('navMenu');
@@ -187,12 +238,16 @@ function initAdminPanel() {
             updateAdminUI();
         });
     }
+    
+    // Kezdeti UI frissítés oldal betöltésekor
+    updateAdminUI();
 }
 
 function updateAdminUI() {
     // Ha van add gomb és edit gomb, frissítjük azok láthatóságát
     const editBtns = document.querySelectorAll('.edit-player-btn');
     const addBtn = document.getElementById('addPlayerBtn');
+    const champApplicantsLink = document.getElementById('champApplicantsLink');
     
     editBtns.forEach(btn => {
         btn.style.display = isAdmin ? 'inline-block' : 'none';
@@ -201,6 +256,11 @@ function updateAdminUI() {
     if (addBtn) {
         addBtn.style.display = isAdmin ? 'inline-block' : 'none';
         addBtn.onclick = addNewPlayer;
+    }
+    
+    // Championship applicants link megjelenítése admin módban
+    if (champApplicantsLink) {
+        champApplicantsLink.style.display = isAdmin ? 'inline-block' : 'none';
     }
 }
 
@@ -1309,6 +1369,191 @@ function loadRulesModal() {
             toggleIcon.textContent = isHidden ? '▲' : '▼';
             toggleBtn.innerHTML = `<span id="toggleRulesIcon">${isHidden ? '▲' : '▼'}</span> Csoportszabályzat ${isHidden ? 'elrejtése' : 'megjelenítése'}`;
         });
+    }
+}
+
+// Championship Join Modal Functions
+function closeChampionshipJoinModal() {
+    const modal = document.getElementById('championshipJoinModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.getElementById('championshipJoinForm').reset();
+        document.getElementById('champJoinMessage').textContent = '';
+    }
+}
+
+async function submitChampionshipJoinForm() {
+    const nameInput = document.getElementById('champJoinName').value.trim();
+    const messageEl = document.getElementById('champJoinMessage');
+    
+    if (!nameInput) {
+        messageEl.textContent = 'Kérlek töltsd ki a mezőt!';
+        messageEl.style.color = '#ff4444';
+        return;
+    }
+    
+    try {
+        // Ellenőrizzük, hogy már van-e ilyen név
+        const checkUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/championship_applicants`;
+        const checkResponse = await fetch(checkUrl);
+        const checkData = await checkResponse.json();
+        
+        if (checkData.documents && checkData.documents.length > 0) {
+            const existingNames = checkData.documents.map(doc => 
+                (doc.fields.name?.stringValue || '').toLowerCase()
+            );
+            
+            if (existingNames.includes(nameInput.toLowerCase())) {
+                messageEl.textContent = '❌ Ez a név már szerepel a jelentkezők között!';
+                messageEl.style.color = '#ff4444';
+                return;
+            }
+        }
+        
+        const applicant = {
+            name: nameInput,
+            gameName: nameInput, // Ugyanaz mint a name, mert most már egy mezőben van
+            timestamp: new Date().toISOString(),
+            status: 'pending'
+        };
+        
+        // Firebase mentés
+        const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/championship_applicants`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fields: {
+                    name: { stringValue: applicant.name },
+                    gameName: { stringValue: applicant.gameName },
+                    timestamp: { stringValue: applicant.timestamp },
+                    status: { stringValue: applicant.status }
+                }
+            })
+        });
+        
+        if (response.ok) {
+            messageEl.textContent = '✅ Jelentkezésed sikeresen elküldve!';
+            messageEl.style.color = '#00d4ff';
+            document.getElementById('championshipJoinForm').reset();
+            
+            setTimeout(() => {
+                closeChampionshipJoinModal();
+            }, 2000);
+        } else {
+            throw new Error('Hiba a mentés során');
+        }
+    } catch (error) {
+        console.error('Hiba:', error);
+        messageEl.textContent = '❌ Hiba történt. Próbáld újra!';
+        messageEl.style.color = '#ff4444';
+    }
+}
+
+// Championship Applicants Modal (Admin)
+function closeChampApplicantsModal() {
+    const modal = document.getElementById('champApplicantsModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+async function openChampApplicantsModal() {
+    const modal = document.getElementById('champApplicantsModal');
+    if (modal) {
+        modal.classList.add('show');
+        await loadChampionshipApplicants();
+    }
+}
+
+async function loadChampionshipApplicants() {
+    const listContainer = document.getElementById('champApplicantsList');
+    if (!listContainer) return;
+    
+    try {
+        const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/championship_applicants`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (!data.documents || data.documents.length === 0) {
+            listContainer.innerHTML = '<p class="muted" style="text-align: center; padding: 40px;">Még nincs jelentkező</p>';
+            return;
+        }
+        
+        const applicants = data.documents.map(doc => ({
+            id: doc.name.split('/').pop(),
+            name: doc.fields.name?.stringValue || '',
+            gameName: doc.fields.gameName?.stringValue || '',
+            timestamp: doc.fields.timestamp?.stringValue || '',
+            status: doc.fields.status?.stringValue || 'pending'
+        }));
+        
+        // Rendezés időbélyeg szerint (legújabb elől)
+        applicants.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        let html = `
+            <div style="overflow-x: auto;">
+                <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; padding: 12px; background: #1a1a1a; color: #00d4ff; border-bottom: 2px solid #00d4ff;">#</th>
+                            <th style="text-align: left; padding: 12px; background: #1a1a1a; color: #00d4ff; border-bottom: 2px solid #00d4ff;">Név / In-Game név</th>
+                            <th style="text-align: left; padding: 12px; background: #1a1a1a; color: #00d4ff; border-bottom: 2px solid #00d4ff;">Jelentkezés ideje</th>
+                            <th style="text-align: center; padding: 12px; background: #1a1a1a; color: #00d4ff; border-bottom: 2px solid #00d4ff;">Műveletek</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        applicants.forEach((app, index) => {
+            const date = new Date(app.timestamp).toLocaleString('hu-HU', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            html += `
+                <tr style="border-bottom: 1px solid #333;">
+                    <td style="padding: 12px; color: #888;">${index + 1}</td>
+                    <td style="padding: 12px;"><strong style="color: #00d4ff; font-size: 1rem;">${app.name}</strong></td>
+                    <td style="padding: 12px; color: #ccc;">${date}</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <button onclick="deleteChampApplicant('${app.id}')" class="danger-btn" style="padding: 8px 16px; font-size: 0.9rem; border: none; background: #ff4444; color: white; border-radius: 5px; cursor: pointer; font-weight: 600; transition: all 0.3s;">🗑️ Törlés</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        listContainer.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Hiba az applicants betöltésekor:', error);
+        listContainer.innerHTML = '<p style="color: #ff4444; text-align: center;">Hiba történt az adatok betöltésekor</p>';
+    }
+}
+
+async function deleteChampApplicant(id) {
+    if (!confirm('Biztosan törlöd ezt a jelentkezést?')) return;
+    
+    try {
+        const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/championship_applicants/${id}`;
+        const response = await fetch(url, { method: 'DELETE' });
+        
+        if (response.ok) {
+            await loadChampionshipApplicants();
+        } else {
+            alert('Hiba a törlés során');
+        }
+    } catch (error) {
+        console.error('Törlési hiba:', error);
+        alert('Hiba történt a törlés során');
     }
 }
 
