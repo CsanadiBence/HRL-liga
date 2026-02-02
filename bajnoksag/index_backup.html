@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WMFCJZXW3H"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-WMFCJZXW3H');
+  </script>
+  
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HunRise Legacy Bajnokság</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="main-header">
+    <a href="../index.html" class="btn-back-main">← Vissza</a>
+    <div class="logo-circle">
+      <div class="logo-inner">
+        <span class="logo-ball">⚽</span>
+      </div>
+    </div>
+    <div class="header-text">
+      <h1>HRL KUPA</h1>
+      <p>HunRise Legacy<br> Házibajnokság</p>
+    </div>
+    
+    <button class="hamburger" id="hamburgerBtnBaj">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <div class="nav-menu" id="navMenuBaj">
+      <div class="admin-section">
+        <div id="adminLoggedOut">
+          <input type="password" id="adminPasswordInput" placeholder="Admin jelszó" class="admin-input">
+          <button id="adminLoginBtn" class="admin-btn">Bejelentkezés</button>
+          <p id="adminLoginMsg" class="muted" style="margin-top: 8px; font-size: 0.85rem;"></p>
+        </div>
+        <div id="adminLoggedIn" style="display:none;" class="admin-active">
+          <span class="admin-status" id="adminStatusText">✓ Admin mód</span>
+          <button id="adminLogoutBtn" class="admin-logout">Kilépés</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="top-nav">
+    <button data-view="leagues" class="nav-btn active">Ligák</button>
+    <button data-view="league_admin" class="nav-btn admin-only-nav master-only">Liga kezelés</button>
+    <button data-view="matches" class="nav-btn admin-only-nav">Meccsek kezelése</button>
+    <button data-view="playoff" class="nav-btn admin-only-nav master-only">Playoff</button>
+  </nav>
+
+  <main class="container">
+
+    <!-- LIGÁK NÉZET (user + admin) -->
+    <section id="view-leagues" class="view active">
+      <div class="card">
+        <h2>HRL Ligák - 2025/2026 Szezon</h2>
+        <p class="muted">4 liga rendszer - Mindenki játszik mindenkivel oda-vissza. Az első 4 helyezett minden ligából továbbjut a Top 16-ba.</p>
+      </div>
+      <div id="leagues-tables-container"></div>
+    </section>
+
+    <!-- LIGA KEZELÉS (csak master admin) -->
+    <section id="view-league_admin" class="view admin-only-view master-only">
+      <div class="card">
+        <div class="card-header-row">
+          <h2>Liga kezelés</h2>
+          <button id="initLeaguesBtn">Ligák inicializálása</button>
+        </div>
+        <p class="muted">4 liga létrehozása és játékosok hozzáadása</p>
+      </div>
+
+      <div id="league-management-container">
+        <!-- Liga A -->
+        <div class="card">
+          <h3>⚽ Liga A</h3>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Játékos neve</label>
+              <input type="text" id="playerNameLeagueA" placeholder="pl. Nagy Péter">
+            </div>
+            <button id="addPlayerLeagueA">Játékos hozzáadása</button>
+          </div>
+          <ul id="playersListLeagueA" class="simple-list"></ul>
+        </div>
+
+        <!-- Liga B -->
+        <div class="card">
+          <h3>⚽ Liga B</h3>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Játékos neve</label>
+              <input type="text" id="playerNameLeagueB" placeholder="pl. Kovács János">
+            </div>
+            <button id="addPlayerLeagueB">Játékos hozzáadása</button>
+          </div>
+          <ul id="playersListLeagueB" class="simple-list"></ul>
+        </div>
+
+        <!-- Liga C -->
+        <div class="card">
+          <h3>⚽ Liga C</h3>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Játékos neve</label>
+              <input type="text" id="playerNameLeagueC" placeholder="pl. Tóth Béla">
+            </div>
+            <button id="addPlayerLeagueC">Játékos hozzáadása</button>
+          </div>
+          <ul id="playersListLeagueC" class="simple-list"></ul>
+        </div>
+
+        <!-- Liga D -->
+        <div class="card">
+          <h3>⚽ Liga D</h3>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Játékos neve</label>
+              <input type="text" id="playerNameLeagueD" placeholder="pl. Szabó Gábor">
+            </div>
+            <button id="addPlayerLeagueD">Játékos hozzáadása</button>
+          </div>
+          <ul id="playersListLeagueD" class="simple-list"></ul>
+        </div>
+
+        <div class="card">
+          <button id="generateAllMatchesBtn" style="width: 100%; padding: 14px; font-size: 16px;">Összes meccs generálása (oda-vissza)</button>
+          <p class="muted" style="margin-top: 8px;">Minden játékos játszik mindenkivel 2x (hazai és vendég)</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- MECCSEK KEZELÉSE (liga adminok + master) -->
+    <section id="view-matches" class="view admin-only-view">
+      <div class="card">
+        <h2>Meccsek kezelése</h2>
+        <p class="muted" id="matchesAdminInfo"></p>
+      </div>
+      <div id="matches-container"></div>
+    </section>
+
+    <!-- TOP 16 PLAYOFF BRACKET -->
+    <section id="view-playoff" class="view">
+      <div class="card">
+        <h2>🏆 Top 16 Playoff Bracket</h2>
+        <p class="muted">Egyenes kieséses szakasz - Minden liga első 4 helyezettje (összesen 16 fő)</p>
+      </div>
+      
+      <!-- Top 16 lista -->
+      <div id="playoff-top16-container" class="top16-container">
+        <div class="card" style="margin-bottom: 32px;">
+          <h3 style="color: #d4af37; margin-bottom: 16px;">📋 Továbbjutók (16 fő)</h3>
+          <div id="top16-list" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;"></div>
+        </div>
+      </div>
+      
+      <!-- Tournament Bracket -->
+      <div class="tournament-bracket">
+        
+        <!-- Nyolcaddöntő -->
+        <div class="bracket-round" data-round="round16">
+          <h3 class="round-header">Nyolcaddöntő</h3>
+          <div class="match" data-match="r16-1"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-2"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-3"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-4"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-5"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-6"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-7"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-8"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+        </div>
+        
+        <!-- Negyeddöntő -->
+        <div class="bracket-round" data-round="quarter">
+          <h3 class="round-header">Negyeddöntő</h3>
+          <div class="match" data-match="q-1"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="q-2"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="q-3"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="q-4"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+        </div>
+        
+        <!-- Elődöntő -->
+        <div class="bracket-round" data-round="semi">
+          <h3 class="round-header">Elődöntő</h3>
+          <div class="match" data-match="s-1"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="s-2"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+        </div>
+        
+        <!-- Döntő és Bronz -->
+        <div class="bracket-round finals" data-round="finals">
+          <h3 class="round-header">Döntő</h3>
+          <div class="match final" data-match="f-1"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <h3 class="round-header bronze-header">Bronzmeccs</h3>
+          <div class="match bronze" data-match="b-1"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+        </div>
+        
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="main-footer">
+    &copy; 2025 HunRise Legacy | Belső bajnokság kezelő
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+      <div class="card">
+        <h2>Play-in eredmények</h2>
+        <p class="muted">A Play-in körből továbbjutó játékosok</p>
+        <button id="togglePlayinBtn" style="margin-top: 12px; width: 100%; padding: 10px; background: linear-gradient(135deg, rgba(10,132,255,0.2), rgba(212,175,55,0.15)); border: 1px solid rgba(212,175,55,0.3); border-radius: 6px; color: #fff; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
+          <span id="togglePlayinIcon">▼</span> Play-in meccsek megjelenítése
+        </button>
+      </div>
+      <div id="playoff-playin-results" class="playin-results-container" style="display: none;"></div>
+      
+      <div class="card" style="margin-top: 32px;">
+        <h2>Egyenes kieséses szakasz</h2>
+        <p class="muted">Nyolcaddöntőtől a Döntőig</p>
+      </div>
+      
+      <!-- Top 16 lista -->
+      <div id="playoff-top16-container" class="top16-container">
+        <div class="card" style="margin-bottom: 32px;">
+          <h3 style="color: #d4af37; margin-bottom: 16px;">🏆 Top 16 - Továbbjutók</h3>
+          <div id="top16-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;"></div>
+        </div>
+      </div>
+      
+      <!-- Tournament Bracket - Előre elkészített struktúra -->
+      <div class="tournament-bracket">
+        
+        <!-- Nyolcaddöntő -->
+        <div class="bracket-round" data-round="round16">
+          <h3 class="round-header">Nyolcaddöntő</h3>
+          <div class="match" data-match="r16-1"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-2"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-3"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-4"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-5"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-6"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-7"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="r16-8"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+        </div>
+        
+        <!-- Negyeddöntő -->
+        <div class="bracket-round" data-round="quarter">
+          <h3 class="round-header">Negyeddöntő</h3>
+          <div class="match" data-match="q-1"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="q-2"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="q-3"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="q-4"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+        </div>
+        
+        <!-- Elődöntő -->
+        <div class="bracket-round" data-round="semi">
+          <h3 class="round-header">Elődöntő</h3>
+          <div class="match" data-match="s-1"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <div class="match" data-match="s-2"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+        </div>
+        
+        <!-- Döntő és Bronz -->
+        <div class="bracket-round finals" data-round="finals">
+          <h3 class="round-header">Döntő</h3>
+          <div class="match final" data-match="f-1"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+          <h3 class="round-header bronze-header">Bronzmeccs</h3>
+          <div class="match bronze" data-match="b-1"><div class="team"><span class="name">-</span><span class="score">0</span></div><div class="team"><span class="name">-</span><span class="score">0</span></div></div>
+        </div>
+        
+      </div>
+    </section>
+
+    <section id="view-matches" class="view">
+      <div class="card">
+        <h2>Lejátszott csoportmeccsek</h2>
+        <button id="clearAllBtn" class="danger-btn admin-only-inline">Összes adat törlése</button>
+      </div>
+      <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Csoport</th>
+                <th>Hazai</th>
+                <th>Eredmény</th>
+                <th>Vendég</th>
+                <th>Dátum</th>
+                <th class="admin-only-inline">Műveletek</th>
+            </tr>
+        </thead>
+        <tbody id="matchesTableBody"></tbody>
+      </table>
+    </section>
+
+    <section id="view-groups" class="view admin-only-view">
+      <div class="card">
+        <h2>Csoportok kezelése</h2>
+        <div class="form-row">
+          <div class="form-field"><label>Csoport neve</label><input id="groupNameInput" type="text"></div>
+          <button id="addGroupBtn">Létrehozás</button>
+        </div>
+        <p id="groupMessage" class="muted"></p>
+      </div>
+      <div class="card"><h3>Meglévő csoportok</h3><ul id="groupList" class="simple-list"></ul></div>
+      
+      <div class="card">
+        <h2>Csoportmeccs rögzítése</h2>
+        <div class="form-row">
+          <div class="form-field"><label>Csoport</label><select id="matchGroupSelect"></select></div>
+          <div class="form-field"><label>Hazai</label><select id="homePlayerSelect"></select></div>
+          <div class="form-field small"><label>Gól</label><input id="homeGoalsInput" type="number" min="0" value="0"></div>
+          <div class="form-field small"><label>Gól</label><input id="awayGoalsInput" type="number" min="0" value="0"></div>
+          <div class="form-field"><label>Vendég</label><select id="awayPlayerSelect"></select></div>
+          <button id="addMatchBtn">Mentés</button>
+        </div>
+        <p id="matchMessage" class="muted"></p>
+      </div>
+    </section>
+
+    <section id="view-players" class="view admin-only-view">
+      <div class="card">
+        <h2>Játékos hozzáadása</h2>
+        <div class="form-row">
+          <div class="form-field"><label>Név</label><input id="playerNameInput" type="text"></div>
+          <div class="form-field"><label>Csoport</label><select id="playerGroupSelect"></select></div>
+          <button id="addPlayerBtn">Mentés</button>
+        </div>
+        <p id="playerMessage" class="muted"></p>
+      </div>
+      <div class="card">
+        <h3>Játékoslista & Pontmódosítások</h3>
+        <span id="playerCountInfo" class="muted"></span>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Név</th>
+              <th>Csoport</th>
+              <th>Pontmódosítás</th> <th>Művelet</th>
+            </tr>
+          </thead>
+          <tbody id="playersTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="view-playoff_admin" class="view admin-only-view">
+      <div class="card">
+        <h2>Play-in párok beállítása</h2>
+        <div id="playin-pair-setup"></div>
+        <p id="playinMessage" class="muted"></p>
+      </div>
+      <div class="card">
+        <h2>Playoff meccs rögzítése</h2>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Forduló</label>
+            <select id="playoffRoundSelect">
+              <option value="playin">Play-in</option>
+              <option value="round16">Nyolcaddöntő</option>
+              <option value="quarter">Negyeddöntő</option>
+              <option value="semi">Elődöntő</option>
+              <option value="final">Döntő</option>
+              <option value="bronze">Bronzmeccs</option>
+            </select>
+          </div>
+          <div class="form-field"><label>Hazai</label><select id="playoffHomeSelect"></select></div>
+          <div class="form-field small"><label>Gól</label><input id="playoffHomeGoals" type="number" min="0" value="0"></div>
+          <div class="form-field small"><label>Gól</label><input id="playoffAwayGoals" type="number" min="0" value="0"></div>
+          <div class="form-field"><label>Vendég</label><select id="playoffAwaySelect"></select></div>
+          <button id="addPlayoffMatchBtn">Mentés</button>
+        </div>
+        <p id="playoffMatchMessage" class="muted"></p>
+      </div>
+      <div class="card">
+        <h2>Bajnokság lezárása (archív mentés)</h2>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 60%;"><label>Bajnokság neve</label><input id="archiveNameInput" type="text" placeholder="Pl. 2026 Téli Kupa"></div>
+          <button id="saveArchiveBtn" class="primary-btn">Mentés archívumba</button>
+        </div>
+        <p id="archiveMessage" class="muted"></p>
+      </div>
+    </section>
+    <section id="view-playoff_admin" class="view admin-only-view">
+    <div class="card">
+        <h2>Rögzített Playoff meccsek kezelése</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Forduló</th>
+                    <th>Párosítás</th>
+                    <th>Eredmény</th>
+                    <th>Rögzítve</th>
+                    <th>Művelet</th>
+                </tr>
+            </thead>
+            <tbody id="adminPlayoffMatchesTableBody"></tbody>
+        </table>
+    </div>
+    
+    <div class="card">
+        <h2>Mentett bajnokságok</h2>
+        <div id="archiveListContainer">
+            <p class="muted">Betöltés...</p>
+        </div>
+    </div>
+</section>
+
+  </main>
+
+  <footer class="main-footer">IFI2 Kupa – Firebase backend</footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
