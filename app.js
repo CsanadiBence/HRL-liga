@@ -1531,6 +1531,7 @@ async function loadChampionshipApplicants() {
             </div>
         `;
         
+        html += '</tbody></table>';
         listContainer.innerHTML = html;
         
     } catch (error) {
