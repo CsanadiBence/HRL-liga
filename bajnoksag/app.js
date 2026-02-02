@@ -16,28 +16,62 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const groupsCol = collection(db, "groups");
+const leaguesCol = collection(db, "leagues");
 const playersCol = collection(db, "players");
 const matchesCol = collection(db, "matches");
 const playoffMatchesCol = collection(db, "playoff_matches");
-const playinPairsCol = collection(db, "playin_pairs");
 const archivesCol = collection(db, "archives");
 
 const ARCHIVE_KEY = "hrl_archives";
 
-let state = { groups: [], players: [], matches: [], playoffMatches: [], playinPairs: [], archives: [] };
+let state = { 
+  leagues: [],        // 4 liga (Liga A, B, C, D)
+  players: [],        // játékosok leagueId-val
+  matches: [],        // liga meccsek
+  playoffMatches: [], // top 16 playoff meccsek
+  archives: []
+};
 let unsub = [];
 
-const ADMIN_HASH = "4e47b24610ae57629ee12de107d43f42eb9d4530c0d20d993363a13d2c334e9b";
-let isAdmin = localStorage.getItem("ifi2_isAdmin") === "1";
+// --- ADMIN JELSZAVAK (5 darab: 4 liga + 1 master) ---
+const MASTER_ADMIN_HASH = "8cbdb209dd8370504907b667a5b7ab273038f75212fa75703c99bdf623860457"; // hunrise123
+const LEAGUE_A_HASH = "d3d5e0629668e3d71c636e9325b946a4161f522fe1c47375a19f5d4ce1adb346"; // leagueA123
+const LEAGUE_B_HASH = "7bd515d036b4af1a0242515dbc6a77cabfef725372c38b9401b3d09ef9fe3453"; // leagueB123
+const LEAGUE_C_HASH = "6fdd31c5853ef4ecb5062393c0d43c0c6a4df0ef660073b43799d3dd0f7c98cc"; // leagueC123
+const LEAGUE_D_HASH = "df2ceca7cd4383d467854adccee21c27170a69a5024a649fff7a2bcda27459ce"; // leagueD123
 
-// --- ADMIN LOGIN LOGIC ---
+let adminStatus = {
+  isMaster: false,
+  leagueAAdmin: false,
+  leagueBAdmin: false,
+  leagueCAdmin: false,
+  leagueDAdmin: false
+};
+
+// localStorage-ból visszatöltjük az admin státuszt
+function loadAdminStatus() {
+  adminStatus.isMaster = localStorage.getItem("ifi2_master") === "1";
+  adminStatus.leagueAAdmin = localStorage.getItem("ifi2_leagueA") === "1";
+  adminStatus.leagueBAdmin = localStorage.getItem("ifi2_leagueB") === "1";
+  adminStatus.leagueCAdmin = localStorage.getItem("ifi2_leagueC") === "1";
+  adminStatus.leagueDAdmin = localStorage.getItem("ifi2_leagueD") === "1";
+}
+loadAdminStatus();
+
+let isAdmin = adminStatus.isMaster || adminStatus.leagueAAdmin || adminStatus.leagueBAdmin || adminStatus.leagueCAdmin || adminStatus.leagueDAdmin;
+
+// --- INIT FUNCTION (DOM betöltése után) ---
+function initApp() {
+  console.log('App initialized');
+  
+// --- ADMIN LOGIN LOGIC (5 jelszó: master + 4 liga) ---
 const adminPasswordInput = document.getElementById("adminPasswordInput");
 const adminLoginBtn = document.getElementById("adminLoginBtn");
 const adminLogoutBtn = document.getElementById("adminLogoutBtn");
 const adminLoginMsg = document.getElementById("adminLoginMsg");
 const adminLoggedOut = document.getElementById("adminLoggedOut");
 const adminLoggedIn = document.getElementById("adminLoggedIn");
+const adminStatusText = document.getElementById("adminStatusText");
 
 async function hashString(str) {
   const encoder = new TextEncoder();
@@ -48,29 +82,76 @@ async function hashString(str) {
 
 adminLoginBtn.addEventListener("click", async () => {
   const hash = await hashString(adminPasswordInput.value);
-  if (hash === ADMIN_HASH) {
-    isAdmin = true;
-    localStorage.setItem("ifi2_isAdmin", "1");
-    updateAdminUI();
-    adminLoginMsg.textContent = "Sikeres belépés";
-    adminPasswordInput.value = "";
-    refreshUI();
+  let loggedIn = false;
+  
+  if (hash === MASTER_ADMIN_HASH) {
+    adminStatus.isMaster = true;
+    localStorage.setItem("ifi2_master", "1");
+    adminLoginMsg.textContent = "Master Admin belépve";
+    loggedIn = true;
+  } else if (hash === LEAGUE_A_HASH) {
+    adminStatus.leagueAAdmin = true;
+    localStorage.setItem("ifi2_leagueA", "1");
+    adminLoginMsg.textContent = "Liga A Admin belépve";
+    loggedIn = true;
+  } else if (hash === LEAGUE_B_HASH) {
+    adminStatus.leagueBAdmin = true;
+    localStorage.setItem("ifi2_leagueB", "1");
+    adminLoginMsg.textContent = "Liga B Admin belépve";
+    loggedIn = true;
+  } else if (hash === LEAGUE_C_HASH) {
+    adminStatus.leagueCAdmin = true;
+    localStorage.setItem("ifi2_leagueC", "1");
+    adminLoginMsg.textContent = "Liga C Admin belépve";
+    loggedIn = true;
+  } else if (hash === LEAGUE_D_HASH) {
+    adminStatus.leagueDAdmin = true;
+    localStorage.setItem("ifi2_leagueD", "1");
+    adminLoginMsg.textContent = "Liga D Admin belépve";
+    loggedIn = true;
   } else {
     adminLoginMsg.textContent = "Hibás jelszó";
+  }
+  
+  if (loggedIn) {
+    isAdmin = true;
+    adminPasswordInput.value = "";
+    updateAdminUI();
+    refreshUI();
   }
 });
 
 adminLogoutBtn.addEventListener("click", () => {
+  adminStatus = { isMaster: false, leagueAAdmin: false, leagueBAdmin: false, leagueCAdmin: false, leagueDAdmin: false };
+  localStorage.removeItem("ifi2_master");
+  localStorage.removeItem("ifi2_leagueA");
+  localStorage.removeItem("ifi2_leagueB");
+  localStorage.removeItem("ifi2_leagueC");
+  localStorage.removeItem("ifi2_leagueD");
   isAdmin = false;
-  localStorage.removeItem("ifi2_isAdmin");
   updateAdminUI();
   refreshUI();
 });
 
 function updateAdminUI() {
-  document.querySelectorAll(".admin-only-view, .admin-only-nav, .admin-only-inline").forEach(el => el.style.display = isAdmin ? "" : "none");
-  adminLoggedOut.style.display = isAdmin ? "none" : "";
-  adminLoggedIn.style.display = isAdmin ? "" : "none";
+  const anyAdmin = adminStatus.isMaster || adminStatus.leagueAAdmin || adminStatus.leagueBAdmin || adminStatus.leagueCAdmin || adminStatus.leagueDAdmin;
+  
+  document.querySelectorAll(".admin-only-view, .admin-only-nav, .admin-only-inline").forEach(el => el.style.display = anyAdmin ? "" : "none");
+  document.querySelectorAll(".master-only").forEach(el => el.style.display = adminStatus.isMaster ? "" : "none");
+  
+  adminLoggedOut.style.display = anyAdmin ? "none" : "";
+  adminLoggedIn.style.display = anyAdmin ? "" : "none";
+  
+  // Admin státusz szöveg
+  if (adminStatusText) {
+    let statusParts = [];
+    if (adminStatus.isMaster) statusParts.push("Master Admin");
+    if (adminStatus.leagueAAdmin) statusParts.push("Liga A");
+    if (adminStatus.leagueBAdmin) statusParts.push("Liga B");
+    if (adminStatus.leagueCAdmin) statusParts.push("Liga C");
+    if (adminStatus.leagueDAdmin) statusParts.push("Liga D");
+    adminStatusText.textContent = statusParts.length > 0 ? `✓ ${statusParts.join(", ")}` : "";
+  }
 }
 updateAdminUI();
 
@@ -94,9 +175,27 @@ if (hamburgerBtn && navMenu) {
   });
 }
 
+// --- NAVIGÁCIÓ ---
+document.querySelectorAll(".nav-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    console.log('Nav button clicked:', btn.dataset.view);
+    const target = btn.dataset.view;
+    const anyAdmin = adminStatus.isMaster || adminStatus.leagueAAdmin || adminStatus.leagueBAdmin || adminStatus.leagueCAdmin || adminStatus.leagueDAdmin;
+    
+    // Admin-only nézetek ellenőrzése
+    if ((target === "league_admin" || target === "matches" || target === "playoff") && !anyAdmin) return;
+    if ((target === "league_admin" || target === "playoff") && !adminStatus.isMaster) return;
+    
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === `view-${target}`));
+    console.log('View changed to:', target);
+  });
+});
+
 // --- LISTENERS ---
 function startListeners() {
-  unsub.push(onSnapshot(groupsCol, snap => { state.groups = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUIFast(); }));
+  unsub.push(onSnapshot(leaguesCol, snap => { state.leagues = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUIFast(); }));
   unsub.push(onSnapshot(playersCol, snap => { state.players = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUI(); }));
   unsub.push(onSnapshot(query(matchesCol, orderBy("createdAt", "desc")), snap => { state.matches = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUI(); }));
   unsub.push(onSnapshot(query(playoffMatchesCol, orderBy("createdAt", "desc")), snap => { state.playoffMatches = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUI(); }));
@@ -116,50 +215,21 @@ function getSortedGroups() {
 
 // --- UI REFRESH ---
 function refreshUI() {
-  renderGroupList();
-  refreshGroupSelects();
-  refreshMatchPlayerSelects();
-  renderPlayersTable();
-  renderDashboardTables();
-  renderMatchesTable();
-  renderPlayinResults();
-  renderPlayoffBracket();
-  
-  if (isAdmin) {
-    renderAdminPlayoffMatches();
-  }
-  
-  if (document.querySelector("#view-playoff_admin.active")) {
-      renderPlayoffAdmin();
-  }
+  // TODO: Itt lesznek a liga táblák renderelése
+  console.log('refreshUI called');
 }
 
 function refreshUIFast() {
-  // Csak a szükséges részeket frissítsd
-  renderGroupList();
-  refreshGroupSelects();
-  refreshMatchPlayerSelects();
+  console.log('refreshUIFast called');
 }
 
-// --- NAVIGÁCIÓ ---
-document.querySelectorAll(".nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const target = btn.dataset.view;
-    if ((target === "groups" || target === "players" || target === "playoff_admin") && !isAdmin) return;
-    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === `view-${target}`));
-    refreshUI();
-  });
-});
-
-// --- CSOPORT KEZELÉS ---
+// --- CSOPORT KEZELÉS --- (RÉGI KÓD - KOMMENTEZVE)
 const groupNameInput = document.getElementById("groupNameInput");
 const addGroupBtn = document.getElementById("addGroupBtn");
 const groupMessage = document.getElementById("groupMessage");
 const groupList = document.getElementById("groupList");
 
-addGroupBtn.addEventListener("click", async () => {
+if (addGroupBtn) addGroupBtn.addEventListener("click", async () => {
   if (!isAdmin) {
     groupMessage.textContent = "Csak admin mód engedélyez!";
     return;
@@ -587,62 +657,181 @@ function renderPlayinResults() {
 }
 
 function renderPlayoffBracket() {
-  if (!playoffBracketContainer) return;
-  playoffBracketContainer.innerHTML = "";
-  const bracket = document.createElement("div");
-  bracket.className = "bracket-container";
+  // Top 16 lista feltöltése
+  const top16List = document.getElementById('top16-list');
+  if (!top16List) return;
   
-  const rounds = [
-    {name: "Nyolcaddöntő", key: "round16", cols: 2},
-    {name: "Negyeddöntő", key: "quarter", cols: 3},
-    {name: "Elődöntő", key: "semi", cols: 4},
-    {name: "Döntő", key: "final", cols: 5},
-    {name: "Bronzmeccs", key: "bronze", cols: 5}
-  ];
+  const {direct, playin} = getQualified();
+  const playinWinners = getWinners('playin');
+  const top16 = [...direct, ...playinWinners];
   
-  rounds.forEach((r, idx) => {
-    const roundDiv = document.createElement("div");
-    roundDiv.className = "bracket-round";
-    roundDiv.setAttribute("data-round", r.key);
-    roundDiv.innerHTML = `<div class="round-title">${r.name}</div>`;
-    
-    let pairs = getAggregatedGoals(r.key);
-    
-    const matchesDiv = document.createElement("div");
-    matchesDiv.className = "matches";
-
-    if (pairs.length === 0) {
-      matchesDiv.innerHTML = "<div class='no-match'>Még nincs meccs</div>";
-    } else {
-      pairs.forEach(p => {
-        const homeName = getPlayerById(p.homeId)?.name || "?";
-        const awayName = getPlayerById(p.awayId)?.name || "?";
-        const winner = p.homeTotal > p.awayTotal ? 'home' : p.awayTotal > p.homeTotal ? 'away' : 'draw';
-        
-        const matchDiv = document.createElement("div");
-        matchDiv.className = "bracket-match";
-        matchDiv.innerHTML = `
-          <div class="match-box">
-            <div class="team ${winner === 'home' ? 'winner' : ''}">
-              <span class="team-name">${homeName}</span>
-              <span class="score">${p.homeTotal}</span>
-            </div>
-            <div class="vs">vs</div>
-            <div class="team ${winner === 'away' ? 'winner' : ''}">
-              <span class="team-name">${awayName}</span>
-              <span class="score">${p.awayTotal}</span>
-            </div>
-          </div>
-        `;
-        matchesDiv.appendChild(matchDiv);
-      });
-    }
-    
-    roundDiv.appendChild(matchesDiv);
-    bracket.appendChild(roundDiv);
+  top16List.innerHTML = '';
+  if (top16.length === 0) {
+    top16List.innerHTML = '<p class="muted">A csoportkör után jelenik meg</p>';
+  } else {
+    top16.forEach((playerId, index) => {
+      const player = getPlayerById(playerId);
+      const playerDiv = document.createElement('div');
+      playerDiv.style.cssText = 'padding: 10px; background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(212,175,55,0.1)); border: 1px solid rgba(0,212,255,0.3); border-radius: 6px;';
+      playerDiv.innerHTML = `<strong style="color: #00d4ff;">${index + 1}.</strong> ${player?.name || 'Ismeretlen'}`;
+      top16List.appendChild(playerDiv);
+    });
+  }
+  
+  // Bracket adatok feltöltése
+  const bracketData = buildBracketStructure();
+  
+  // Nyolcaddöntő feltöltése
+  bracketData.round16.forEach((match, idx) => {
+    fillMatchData(`r16-${idx + 1}`, match);
   });
   
-  playoffBracketContainer.appendChild(bracket);
+  // Negyeddöntő feltöltése
+  bracketData.quarter.forEach((match, idx) => {
+    fillMatchData(`q-${idx + 1}`, match);
+  });
+  
+  // Elődöntő feltöltése
+  bracketData.semi.forEach((match, idx) => {
+    fillMatchData(`s-${idx + 1}`, match);
+  });
+  
+  // Döntő feltöltése
+  if (bracketData.final.length > 0) {
+    fillMatchData('f-1', bracketData.final[0]);
+  }
+  
+  // Bronzmeccs feltöltése
+  if (bracketData.bronze.length > 0) {
+    fillMatchData('b-1', bracketData.bronze[0]);
+  }
+}
+
+// Meccs adatok kitöltése a HTML struktúrában
+function fillMatchData(matchId, matchData) {
+  const matchEl = document.querySelector(`[data-match="${matchId}"]`);
+  if (!matchEl) return;
+  
+  const homeName = matchData ? getPlayerById(matchData.homeId)?.name || "?" : "-";
+  const awayName = matchData ? getPlayerById(matchData.awayId)?.name || "?" : "-";
+  const homeScore = matchData ? matchData.homeTotal : 0;
+  const awayScore = matchData ? matchData.awayTotal : 0;
+  
+  const winner = homeScore > awayScore ? 'home' : awayScore > homeScore ? 'away' : '';
+  
+  const teams = matchEl.querySelectorAll('.team');
+  if (teams[0]) {
+    teams[0].className = `team ${winner === 'home' ? 'winner' : ''}`;
+    teams[0].querySelector('.name').textContent = homeName;
+    teams[0].querySelector('.score').textContent = homeScore;
+  }
+  if (teams[1]) {
+    teams[1].className = `team ${winner === 'away' ? 'winner' : ''}`;
+    teams[1].querySelector('.name').textContent = awayName;
+    teams[1].querySelector('.score').textContent = awayScore;
+  }
+}
+
+// Bracket struktúra építése automatikus továbbjutással
+function buildBracketStructure() {
+  const structure = {
+    round16: [],
+    quarter: [],
+    semi: [],
+    final: [],
+    bronze: []
+  };
+  
+  // Nyolcaddöntő: Valós meccsek
+  const round16Pairs = getAggregatedGoals('round16');
+  structure.round16 = round16Pairs;
+  
+  // Negyeddöntő: Round16 győzteseiből
+  const round16Winners = [];
+  round16Pairs.forEach(p => {
+    if (p.homeTotal > p.awayTotal) round16Winners.push(p.homeId);
+    else if (p.awayTotal > p.homeTotal) round16Winners.push(p.awayId);
+  });
+  
+  // Ha van valós negyeddöntő meccs, használjuk azt, különben generáljuk
+  const quarterPairs = getAggregatedGoals('quarter');
+  if (quarterPairs.length > 0) {
+    structure.quarter = quarterPairs;
+  } else if (round16Winners.length >= 2) {
+    // Automatikus párosítás: 1v8, 2v7, 3v6, 4v5 alapon
+    for (let i = 0; i < round16Winners.length; i += 2) {
+      if (round16Winners[i + 1]) {
+        structure.quarter.push({
+          homeId: round16Winners[i],
+          awayId: round16Winners[i + 1],
+          homeTotal: 0,
+          awayTotal: 0
+        });
+      }
+    }
+  }
+  
+  // Elődöntő: Quarter győzteseiből
+  const quarterWinners = [];
+  structure.quarter.forEach(p => {
+    if (p.homeTotal > p.awayTotal) quarterWinners.push(p.homeId);
+    else if (p.awayTotal > p.homeTotal) quarterWinners.push(p.awayId);
+  });
+  
+  const semiPairs = getAggregatedGoals('semi');
+  if (semiPairs.length > 0) {
+    structure.semi = semiPairs;
+  } else if (quarterWinners.length >= 2) {
+    for (let i = 0; i < quarterWinners.length; i += 2) {
+      if (quarterWinners[i + 1]) {
+        structure.semi.push({
+          homeId: quarterWinners[i],
+          awayId: quarterWinners[i + 1],
+          homeTotal: 0,
+          awayTotal: 0
+        });
+      }
+    }
+  }
+  
+  // Döntő és Bronzmeccs
+  const semiWinners = [];
+  const semiLosers = [];
+  structure.semi.forEach(p => {
+    if (p.homeTotal > p.awayTotal) {
+      semiWinners.push(p.homeId);
+      semiLosers.push(p.awayId);
+    } else if (p.awayTotal > p.homeTotal) {
+      semiWinners.push(p.awayId);
+      semiLosers.push(p.homeId);
+    }
+  });
+  
+  const finalPairs = getAggregatedGoals('final');
+  if (finalPairs.length > 0) {
+    structure.final = finalPairs;
+  } else if (semiWinners.length >= 2) {
+    structure.final.push({
+      homeId: semiWinners[0],
+      awayId: semiWinners[1],
+      homeTotal: 0,
+      awayTotal: 0
+    });
+  }
+  
+  const bronzePairs = getAggregatedGoals('bronze');
+  if (bronzePairs.length > 0) {
+    structure.bronze = bronzePairs;
+  } else if (semiLosers.length >= 2) {
+    structure.bronze.push({
+      homeId: semiLosers[0],
+      awayId: semiLosers[1],
+      homeTotal: 0,
+      awayTotal: 0
+    });
+  }
+  
+  return structure;
 }
 
 // --- ADMIN PLAYOFF KEZELÉS ---
@@ -929,9 +1118,57 @@ async function saveArchive() {
 }
 
 function updateArchiveDisplay() {
-  if (document.querySelector("#view-playoff_admin.active")) {
-    renderArchiveList();
+  renderArchiveList(); // Mindig frissítse, nem csak ha aktív a view
+}
+
+function renderArchiveList() {
+  const container = document.getElementById("archiveListContainer");
+  if (!container) return;
+  
+  if (state.archives.length === 0) {
+    container.innerHTML = "<p class='muted'>Még nincs mentett bajnokság.</p>";
+    return;
   }
+  
+  let html = "<div class='archive-list'>";
+  state.archives.forEach(archive => {
+    const date = archive.finishedAt?.toDate ? archive.finishedAt.toDate().toLocaleDateString('hu-HU') : "Ismeretlen dátum";
+    const championName = archive.champion?.winnerName || "Nincs adat";
+    const finalScore = archive.champion?.finalScore || "-";
+    
+    html += `
+      <div class="archive-card">
+        <h3>${archive.name}</h3>
+        <p><strong>Befejezve:</strong> ${date}</p>
+        <p><strong>Bajnok:</strong> ${championName}</p>
+        <p><strong>Döntő:</strong> ${finalScore}</p>
+        <button class="view-archive-btn" data-id="${archive.id}">Megtekintés</button>
+        ${isAdmin ? `<button class="delete-archive-btn" data-id="${archive.id}">Törlés</button>` : ''}
+      </div>
+    `;
+  });
+  html += "</div>";
+  
+  container.innerHTML = html;
+  
+  // Event listener a gombokhoz
+  container.querySelectorAll('.delete-archive-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.getAttribute('data-id');
+      if (confirm('Biztos törlöd ezt a bajnokságot?')) {
+        await deleteDoc(doc(db, 'archives', id));
+        alert('Bajnokság törölve!');
+      }
+    });
+  });
+  
+  container.querySelectorAll('.view-archive-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.getAttribute('data-id');
+      alert('Megtekintés funkció hamarosan! Archív ID: ' + id);
+      // Itt később implementálható a részletes nézet
+    });
+  });
 }
 
 if (saveArchiveBtn) {
@@ -958,3 +1195,12 @@ if (togglePlayinBtn) {
 
 // Kezdés
 refreshUI();
+
+} // initApp() vége
+
+// DOM betöltése után indítjuk az appot
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
