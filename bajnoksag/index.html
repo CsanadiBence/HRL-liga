@@ -51,9 +51,10 @@
 
   <nav class="top-nav">
     <button data-view="leagues" class="nav-btn active">Ligák</button>
-    <button data-view="league_admin" class="nav-btn admin-only-nav master-only">Liga kezelés</button>
+    <button data-view="results" class="nav-btn">Eredmények</button>
+    <button data-view="league_admin" class="nav-btn admin-only-nav">Liga kezelés</button>
     <button data-view="matches" class="nav-btn admin-only-nav">Meccsek kezelése</button>
-    <button data-view="playoff" class="nav-btn admin-only-nav master-only">Playoff</button>
+    <button data-view="playoff" class="nav-btn">Playoff</button>
   </nav>
 
   <main class="container">
@@ -67,19 +68,30 @@
       <div id="leagues-tables-container"></div>
     </section>
 
-    <!-- LIGA KEZELÉS (csak master admin) -->
-    <section id="view-league_admin" class="view admin-only-view master-only">
+    <!-- EREDMÉNYEK NÉZET (mindenki) -->
+    <section id="view-results" class="view">
       <div class="card">
+        <h2>📊 Mérkőzések eredményei</h2>
+        <p class="muted">Összes rögzített meccs a ligákban</p>
+      </div>
+      <div class="card">
+        <div id="all-matches-list-container"></div>
+      </div>
+    </section>
+
+    <!-- LIGA KEZELÉS (admin) -->
+    <section id="view-league_admin" class="view admin-only-view">
+      <div class="card master-only">
         <div class="card-header-row">
           <h2>Liga kezelés</h2>
           <button id="initLeaguesBtn">Ligák inicializálása</button>
         </div>
-        <p class="muted">4 liga létrehozása és játékosok hozzáadása</p>
+        <p class="muted">4 liga létrehozása (csak Master Admin)</p>
       </div>
 
       <div id="league-management-container">
         <!-- Liga A -->
-        <div class="card">
+        <div class="card league-a-section">
           <h3>⚽ Liga A</h3>
           <div class="form-row">
             <div class="form-field">
@@ -88,11 +100,11 @@
             </div>
             <button id="addPlayerLeagueA">Játékos hozzáadása</button>
           </div>
-          <ul id="playersListLeagueA" class="simple-list"></ul>
+          <div id="playersListLeagueA" class="players-management-list"></div>
         </div>
 
         <!-- Liga B -->
-        <div class="card">
+        <div class="card league-b-section">
           <h3>⚽ Liga B</h3>
           <div class="form-row">
             <div class="form-field">
@@ -101,11 +113,11 @@
             </div>
             <button id="addPlayerLeagueB">Játékos hozzáadása</button>
           </div>
-          <ul id="playersListLeagueB" class="simple-list"></ul>
+          <div id="playersListLeagueB" class="players-management-list"></div>
         </div>
 
         <!-- Liga C -->
-        <div class="card">
+        <div class="card league-c-section">
           <h3>⚽ Liga C</h3>
           <div class="form-row">
             <div class="form-field">
@@ -114,11 +126,11 @@
             </div>
             <button id="addPlayerLeagueC">Játékos hozzáadása</button>
           </div>
-          <ul id="playersListLeagueC" class="simple-list"></ul>
+          <div id="playersListLeagueC" class="players-management-list"></div>
         </div>
 
         <!-- Liga D -->
-        <div class="card">
+        <div class="card league-d-section">
           <h3>⚽ Liga D</h3>
           <div class="form-row">
             <div class="form-field">
@@ -127,7 +139,7 @@
             </div>
             <button id="addPlayerLeagueD">Játékos hozzáadása</button>
           </div>
-          <ul id="playersListLeagueD" class="simple-list"></ul>
+          <div id="playersListLeagueD" class="players-management-list"></div>
         </div>
 
         <div class="card">
@@ -143,14 +155,111 @@
         <h2>Meccsek kezelése</h2>
         <p class="muted" id="matchesAdminInfo"></p>
       </div>
-      <div id="matches-container"></div>
+
+      <!-- Meccs rögzítés -->
+      <div class="card">
+        <h3>Liga meccs rögzítése</h3>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Liga</label>
+            <select id="matchLeagueSelect">
+              <option value="">-- Válassz ligát --</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Hazai</label>
+            <select id="matchHomePlayerSelect">
+              <option value="">-- Válassz játékost --</option>
+            </select>
+          </div>
+          <div class="form-field small">
+            <label>Gól</label>
+            <input id="matchHomeGoals" type="number" min="0" value="0">
+          </div>
+          <div class="form-field small">
+            <label>Gól</label>
+            <input id="matchAwayGoals" type="number" min="0" value="0">
+          </div>
+          <div class="form-field">
+            <label>Vendég</label>
+            <select id="matchAwayPlayerSelect">
+              <option value="">-- Válassz játékost --</option>
+            </select>
+          </div>
+          <button id="addMatchBtn">Meccs mentése</button>
+        </div>
+        <p id="matchMessage" class="muted" style="margin-top: 8px;"></p>
+      </div>
+
+      <!-- Rögzített meccsek listája -->
+      <div class="card">
+        <h3>Rögzített meccsek</h3>
+        <div id="matches-list-container"></div>
+      </div>
+
+      <!-- Bajnokság archíválása és adatok törlése -->
+      <div class="card master-only">
+        <h3>⚙️ Bajnokság kezelés</h3>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Archívum neve (opcionális)</label>
+            <input id="archiveNameInput" type="text" placeholder="HRL Bajnokság 2025/2026">
+          </div>
+          <button id="saveArchiveBtn" style="background: linear-gradient(135deg, #10b981, #059669);">💾 Bajnokság mentése archívba</button>
+        </div>
+        <p id="archiveMessage" class="muted" style="margin-top: 8px;"></p>
+        
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(239, 68, 68, 0.3);">
+          <button id="clearAllBtn" class="danger-btn" style="width: 100%;">🗑️ ÖSSZES ADAT TÖRLÉSE (Ligák, játékosok, meccsek)</button>
+          <p class="muted" style="margin-top: 8px; color: #ef4444; font-size: 11px;">⚠️ Figyelem! Ez véglegesen törli az összes ligát, játékost és meccset!</p>
+        </div>
+      </div>
     </section>
 
     <!-- TOP 16 PLAYOFF BRACKET -->
-    <section id="view-playoff" class="view admin-only-view master-only">
+    <section id="view-playoff" class="view">
       <div class="card">
         <h2>🏆 TOP 16 PLAYOFF BRACKET</h2>
         <p class="muted">Egyenes kieséses rendszer - Champions League stílusú playofffa</p>
+      </div>
+
+      <!-- Playoff meccs rögzítés -->
+      <div class="card master-only admin-only-view">
+        <h3>Playoff meccs rögzítése</h3>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Forduló</label>
+            <select id="playoffRoundSelect">
+              <option value="r16">Nyolcaddöntő (R16)</option>
+              <option value="quarter">Negyeddöntő (QF)</option>
+              <option value="semi">Elődöntő (SF)</option>
+              <option value="final">Döntő</option>
+              <option value="bronze">Bronzmeccs</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Meccs ID</label>
+            <input id="playoffMatchId" type="text" placeholder="pl. r16-1, q-1, s-1, final, bronze">
+          </div>
+          <div class="form-field">
+            <label>Hazai játékos</label>
+            <input id="playoffHomePlayer" type="text" placeholder="Játékos neve">
+          </div>
+          <div class="form-field small">
+            <label>Gól</label>
+            <input id="playoffHomeGoals" type="number" min="0" value="0">
+          </div>
+          <div class="form-field small">
+            <label>Gól</label>
+            <input id="playoffAwayGoals" type="number" min="0" value="0">
+          </div>
+          <div class="form-field">
+            <label>Vendég játékos</label>
+            <input id="playoffAwayPlayer" type="text" placeholder="Játékos neve">
+          </div>
+          <button id="addPlayoffMatchBtn">Playoff meccs mentése</button>
+        </div>
+        <p id="playoffMatchMessage" class="muted" style="margin-top: 8px;"></p>
       </div>
 
       <!-- Championship Bracket -->
