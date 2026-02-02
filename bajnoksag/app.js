@@ -139,6 +139,12 @@ function updateAdminUI() {
   document.querySelectorAll(".admin-only-view, .admin-only-nav, .admin-only-inline").forEach(el => el.style.display = anyAdmin ? "" : "none");
   document.querySelectorAll(".master-only").forEach(el => el.style.display = adminStatus.isMaster ? "" : "none");
   
+  // Liga-specifikus láthatóság
+  document.querySelectorAll(".league-a-section").forEach(el => el.style.display = (adminStatus.isMaster || adminStatus.leagueAAdmin) ? "" : "none");
+  document.querySelectorAll(".league-b-section").forEach(el => el.style.display = (adminStatus.isMaster || adminStatus.leagueBAdmin) ? "" : "none");
+  document.querySelectorAll(".league-c-section").forEach(el => el.style.display = (adminStatus.isMaster || adminStatus.leagueCAdmin) ? "" : "none");
+  document.querySelectorAll(".league-d-section").forEach(el => el.style.display = (adminStatus.isMaster || adminStatus.leagueDAdmin) ? "" : "none");
+  
   adminLoggedOut.style.display = anyAdmin ? "none" : "";
   adminLoggedIn.style.display = anyAdmin ? "" : "none";
   
@@ -183,8 +189,7 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
     const anyAdmin = adminStatus.isMaster || adminStatus.leagueAAdmin || adminStatus.leagueBAdmin || adminStatus.leagueCAdmin || adminStatus.leagueDAdmin;
     
     // Admin-only nézetek ellenőrzése
-    if ((target === "league_admin" || target === "matches" || target === "playoff") && !anyAdmin) return;
-    if ((target === "league_admin" || target === "playoff") && !adminStatus.isMaster) return;
+    if ((target === "league_admin" || target === "matches") && !anyAdmin) return;
     
     document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
@@ -193,16 +198,508 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
   });
 });
 
+// --- LIGA INICIALIZÁLÁS ---
+const initLeaguesBtn = document.getElementById('initLeaguesBtn');
+if (initLeaguesBtn) {
+  initLeaguesBtn.addEventListener('click', async () => {
+    if (!adminStatus.isMaster) {
+      alert('Csak a Master Admin inicializálhatja a ligákat!');
+      return;
+    }
+    
+    // Ellenőrizzük, hogy már léteznek-e ligák
+    if (state.leagues.length > 0) {
+      if (!confirm('A ligák már léteznek! Biztosan újra inicializálod? (Ez törli az összes adatot!)')) {
+        return;
+      }
+      // Töröljük az összes meglévő adatot
+      const leaguesSnapshot = await getDocs(leaguesCol);
+      const playersSnapshot = await getDocs(playersCol);
+      const matchesSnapshot = await getDocs(matchesCol);
+      
+      for (const doc of leaguesSnapshot.docs) await deleteDoc(doc.ref);
+      for (const doc of playersSnapshot.docs) await deleteDoc(doc.ref);
+      for (const doc of matchesSnapshot.docs) await deleteDoc(doc.ref);
+    }
+    
+    // Létrehozzuk a 4 ligát
+    try {
+      await addDoc(leaguesCol, { name: 'Liga A', order: 1, createdAt: serverTimestamp() });
+      await addDoc(leaguesCol, { name: 'Liga B', order: 2, createdAt: serverTimestamp() });
+      await addDoc(leaguesCol, { name: 'Liga C', order: 3, createdAt: serverTimestamp() });
+      await addDoc(leaguesCol, { name: 'Liga D', order: 4, createdAt: serverTimestamp() });
+      alert('✅ Ligák sikeresen létrehozva!');
+    } catch (error) {
+      console.error('Hiba a ligák létrehozásakor:', error);
+      alert('❌ Hiba történt: ' + error.message);
+    }
+  });
+}
+
+// --- JÁTÉKOS HOZZÁADÁS LIGÁKHOZ ---
+['A', 'B', 'C', 'D'].forEach(leagueLetter => {
+  const addBtn = document.getElementById(`addPlayerLeague${leagueLetter}`);
+  const nameInput = document.getElementById(`playerNameLeague${leagueLetter}`);
+  const playersList = document.getElementById(`playersListLeague${leagueLetter}`);
+  
+  if (addBtn && nameInput) {
+    addBtn.addEventListener('click', async () => {
+      // Ellenőrizzük, hogy a felhasználó admin-e erre a ligára
+      const canManage = adminStatus.isMaster || 
+                        (leagueLetter === 'A' && adminStatus.leagueAAdmin) ||
+                        (leagueLetter === 'B' && adminStatus.leagueBAdmin) ||
+                        (leagueLetter === 'C' && adminStatus.leagueCAdmin) ||
+                        (leagueLetter === 'D' && adminStatus.leagueDAdmin);
+      
+      if (!canManage) {
+        alert(`Nincs jogosultságod játékost hozzáadni a Liga ${leagueLetter}-hoz!`);
+        return;
+      }
+      
+      const playerName = nameInput.value.trim();
+      if (!playerName) {
+        alert('Add meg a játékos nevét!');
+        return;
+      }
+      
+      // Keressük meg a megfelelő ligát
+      const league = state.leagues.find(l => l.name === `Liga ${leagueLetter}`);
+      if (!league) {
+        alert('A liga még nem létezik! Először inicializáld a ligákat.');
+        return;
+      }
+      
+      try {
+        await addDoc(playersCol, {
+          name: playerName,
+          leagueId: league.id,
+          adjustment: 0,
+          createdAt: serverTimestamp()
+        });
+        nameInput.value = '';
+        alert(`✅ ${playerName} hozzáadva a Liga ${leagueLetter}-hoz!`);
+      } catch (error) {
+        console.error('Hiba a játékos hozzáadásakor:', error);
+        alert('❌ Hiba: ' + error.message);
+      }
+    });
+  }
+});
+
+// Játékosok megjelenítése ligánként
+function renderLeaguePlayers() {
+  ['A', 'B', 'C', 'D'].forEach(leagueLetter => {
+    const playersList = document.getElementById(`playersListLeague${leagueLetter}`);
+    if (!playersList) return;
+    
+    // Ellenőrizzük, hogy a felhasználó láthatja-e ezt a ligát
+    const canView = adminStatus.isMaster || 
+                    (leagueLetter === 'A' && adminStatus.leagueAAdmin) ||
+                    (leagueLetter === 'B' && adminStatus.leagueBAdmin) ||
+                    (leagueLetter === 'C' && adminStatus.leagueCAdmin) ||
+                    (leagueLetter === 'D' && adminStatus.leagueDAdmin);
+    
+    const league = state.leagues.find(l => l.name === `Liga ${leagueLetter}`);
+    if (!league) {
+      playersList.innerHTML = '<p class="muted">Liga még nem létezik</p>';
+      return;
+    }
+    
+    const players = state.players.filter(p => p.leagueId === league.id);
+    
+    if (players.length === 0) {
+      playersList.innerHTML = '<p class="muted">Nincs játékos</p>';
+    } else {
+      playersList.innerHTML = `
+        <table class="data-table" style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Név</th>
+              <th style="width: 120px;">Pontmódosítás</th>
+              <th style="width: 100px;">Műveletek</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${players.map(p => `
+              <tr>
+                <td style="text-align: left;">${p.name}</td>
+                <td>
+                  <input type="number" 
+                         class="adjustment-input" 
+                         data-player-id="${p.id}" 
+                         value="${p.adjustment || 0}" 
+                         style="width: 60px; padding: 4px; text-align: center; border: 1px solid rgba(212,175,55,0.3); background: rgba(0,0,0,0.3); color: #fff; border-radius: 4px;"
+                         ${canView ? '' : 'disabled'}>
+                  ${canView ? `<button onclick="saveAdjustment('${p.id}')" style="margin-left: 4px; padding: 4px 8px; background: rgba(16,185,129,0.2); border: 1px solid rgba(16,185,129,0.4); border-radius: 4px; color: #10b981; cursor: pointer; font-size: 11px;">Mentés</button>` : ''}
+                </td>
+                <td>
+                  ${canView ? `<button onclick="deletePlayer('${p.id}', '${leagueLetter}')" style="padding: 4px 8px; background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); border-radius: 4px; color: #ef4444; cursor: pointer; font-size: 11px;">Törlés</button>` : '-'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ${players.some(p => p.adjustment) ? '<p class="muted" style="margin-top: 8px; font-size: 11px;">ℹ️ Pontmódosítás: + érték bónusz, - érték büntetés</p>' : ''}
+      `;
+    }
+  });
+}
+
+// Pontmódosítás mentése
+window.saveAdjustment = async (playerId) => {
+  const input = document.querySelector(`.adjustment-input[data-player-id="${playerId}"]`);
+  if (!input) return;
+  
+  const player = state.players.find(p => p.id === playerId);
+  if (!player) return;
+  
+  const league = state.leagues.find(l => l.id === player.leagueId);
+  const leagueLetter = league?.name?.replace('Liga ', '');
+  
+  const canManage = adminStatus.isMaster || 
+                    (leagueLetter === 'A' && adminStatus.leagueAAdmin) ||
+                    (leagueLetter === 'B' && adminStatus.leagueBAdmin) ||
+                    (leagueLetter === 'C' && adminStatus.leagueCAdmin) ||
+                    (leagueLetter === 'D' && adminStatus.leagueDAdmin);
+  
+  if (!canManage) {
+    alert('Nincs jogosultságod módosítani!');
+    return;
+  }
+  
+  const value = parseInt(input.value) || 0;
+  
+  try {
+    await updateDoc(doc(db, 'players', playerId), { adjustment: value });
+    alert(`✅ Pontmódosítás mentve: ${value > 0 ? '+' : ''}${value} pont`);
+  } catch (error) {
+    console.error('Hiba a pontmódosításkor:', error);
+    alert('❌ Hiba: ' + error.message);
+  }
+};
+
+// Játékos törlése
+window.deletePlayer = async (playerId, leagueLetter) => {
+  const canManage = adminStatus.isMaster || 
+                    (leagueLetter === 'A' && adminStatus.leagueAAdmin) ||
+                    (leagueLetter === 'B' && adminStatus.leagueBAdmin) ||
+                    (leagueLetter === 'C' && adminStatus.leagueCAdmin) ||
+                    (leagueLetter === 'D' && adminStatus.leagueDAdmin);
+  
+  if (!canManage) {
+    alert('Nincs jogosultságod törölni játékost!');
+    return;
+  }
+  
+  if (!confirm('Biztosan törölni szeretnéd ezt a játékost?')) return;
+  
+  try {
+    await deleteDoc(doc(db, 'players', playerId));
+    alert('✅ Játékos törölve!');
+  } catch (error) {
+    console.error('Hiba a játékos törlésekor:', error);
+    alert('❌ Hiba: ' + error.message);
+  }
+};
+
+// --- MECCS KEZELÉS ---
+const matchLeagueSelect = document.getElementById('matchLeagueSelect');
+const matchHomePlayerSelect = document.getElementById('matchHomePlayerSelect');
+const matchAwayPlayerSelect = document.getElementById('matchAwayPlayerSelect');
+const matchHomeGoals = document.getElementById('matchHomeGoals');
+const matchAwayGoals = document.getElementById('matchAwayGoals');
+const addMatchBtn = document.getElementById('addMatchBtn');
+const matchMessage = document.getElementById('matchMessage');
+
+// Liga select feltöltése
+function refreshMatchLeagueSelect() {
+  if (!matchLeagueSelect) return;
+  
+  const anyAdmin = adminStatus.isMaster || adminStatus.leagueAAdmin || adminStatus.leagueBAdmin || adminStatus.leagueCAdmin || adminStatus.leagueDAdmin;
+  if (!anyAdmin) return;
+  
+  const sortedLeagues = [...state.leagues].sort((a, b) => (a.order || 0) - (b.order || 0));
+  
+  // Liga adminok csak a saját ligájukat látják
+  const availableLeagues = sortedLeagues.filter(league => {
+    if (adminStatus.isMaster) return true;
+    if (adminStatus.leagueAAdmin && league.name === 'Liga A') return true;
+    if (adminStatus.leagueBAdmin && league.name === 'Liga B') return true;
+    if (adminStatus.leagueCAdmin && league.name === 'Liga C') return true;
+    if (adminStatus.leagueDAdmin && league.name === 'Liga D') return true;
+    return false;
+  });
+  
+  matchLeagueSelect.innerHTML = '<option value="">-- Válassz ligát --</option>' + 
+    availableLeagues.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+}
+
+// Liga választáskor frissítsük a játékosok listáját
+if (matchLeagueSelect) {
+  matchLeagueSelect.addEventListener('change', () => {
+    const leagueId = matchLeagueSelect.value;
+    if (!leagueId) {
+      matchHomePlayerSelect.innerHTML = '<option value="">-- Válassz ligát először --</option>';
+      matchAwayPlayerSelect.innerHTML = '<option value="">-- Válassz ligát először --</option>';
+      return;
+    }
+    
+    const players = state.players.filter(p => p.leagueId === leagueId);
+    const options = '<option value="">-- Válassz játékost --</option>' + 
+      players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    
+    matchHomePlayerSelect.innerHTML = options;
+    matchAwayPlayerSelect.innerHTML = options;
+  });
+}
+
+// Meccs mentése
+if (addMatchBtn) {
+  addMatchBtn.addEventListener('click', async () => {
+    const anyAdmin = adminStatus.isMaster || adminStatus.leagueAAdmin || adminStatus.leagueBAdmin || adminStatus.leagueCAdmin || adminStatus.leagueDAdmin;
+    if (!anyAdmin) {
+      matchMessage.textContent = '❌ Csak adminok rögzíthetnek meccseket!';
+      return;
+    }
+    
+    const leagueId = matchLeagueSelect.value;
+    const homePlayerId = matchHomePlayerSelect.value;
+    const awayPlayerId = matchAwayPlayerSelect.value;
+    const homeGoals = parseInt(matchHomeGoals.value) || 0;
+    const awayGoals = parseInt(matchAwayGoals.value) || 0;
+    
+    if (!leagueId || !homePlayerId || !awayPlayerId) {
+      matchMessage.textContent = '❌ Töltsd ki az összes mezőt!';
+      return;
+    }
+    
+    if (homePlayerId === awayPlayerId) {
+      matchMessage.textContent = '❌ Egy játékos nem játszhat saját maga ellen!';
+      return;
+    }
+    
+    try {
+      await addDoc(matchesCol, {
+        leagueId,
+        homePlayerId,
+        awayPlayerId,
+        homeGoals,
+        awayGoals,
+        createdAt: serverTimestamp()
+      });
+      
+      matchMessage.textContent = `✅ Meccs rögzítve: ${homeGoals}-${awayGoals}`;
+      matchHomeGoals.value = 0;
+      matchAwayGoals.value = 0;
+      matchHomePlayerSelect.value = '';
+      matchAwayPlayerSelect.value = '';
+    } catch (error) {
+      console.error('Hiba a meccs rögzítésekor:', error);
+      matchMessage.textContent = '❌ Hiba: ' + error.message;
+    }
+  });
+}
+
+// Meccsek listázása
+function renderMatchesList() {
+  const container = document.getElementById('matches-list-container');
+  if (!container) return;
+  
+  const anyAdmin = adminStatus.isMaster || adminStatus.leagueAAdmin || adminStatus.leagueBAdmin || adminStatus.leagueCAdmin || adminStatus.leagueDAdmin;
+  if (!anyAdmin) {
+    container.innerHTML = '<p class="muted">Jelentkezz be adminként!</p>';
+    return;
+  }
+  
+  // Liga adminok csak a saját ligájuk meccseit látják
+  let matches = state.matches.filter(match => {
+    if (adminStatus.isMaster) return true;
+    
+    const league = state.leagues.find(l => l.id === match.leagueId);
+    if (!league) return false;
+    
+    if (adminStatus.leagueAAdmin && league.name === 'Liga A') return true;
+    if (adminStatus.leagueBAdmin && league.name === 'Liga B') return true;
+    if (adminStatus.leagueCAdmin && league.name === 'Liga C') return true;
+    if (adminStatus.leagueDAdmin && league.name === 'Liga D') return true;
+    return false;
+  });
+  
+  if (matches.length === 0) {
+    container.innerHTML = '<p class="muted">Még nincs rögzített meccs</p>';
+    return;
+  }
+  
+  container.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Liga</th>
+          <th>Hazai</th>
+          <th style="width: 80px;">Eredmény</th>
+          <th>Vendég</th>
+          <th style="width: 100px;">Műveletek</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${matches.map(match => {
+          const league = state.leagues.find(l => l.id === match.leagueId);
+          const homePlayer = state.players.find(p => p.id === match.homePlayerId);
+          const awayPlayer = state.players.find(p => p.id === match.awayPlayerId);
+          
+          return `
+            <tr>
+              <td>${league ? league.name : '-'}</td>
+              <td>${homePlayer ? homePlayer.name : '-'}</td>
+              <td style="font-weight: 800; font-size: 16px; text-align: center;">${match.homeGoals} - ${match.awayGoals}</td>
+              <td>${awayPlayer ? awayPlayer.name : '-'}</td>
+              <td>
+                <button onclick="deleteMatch('${match.id}')" style="padding: 6px 12px; background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); border-radius: 6px; color: #ef4444; cursor: pointer; font-size: 12px;">Törlés</button>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// Meccs törlése
+window.deleteMatch = async (matchId) => {
+  const anyAdmin = adminStatus.isMaster || adminStatus.leagueAAdmin || adminStatus.leagueBAdmin || adminStatus.leagueCAdmin || adminStatus.leagueDAdmin;
+  if (!anyAdmin) {
+    alert('❌ Csak adminok törölhetnek meccseket!');
+    return;
+  }
+  
+  if (!confirm('Biztosan törölni szeretnéd ezt a meccset?')) return;
+  
+  try {
+    await deleteDoc(doc(db, 'matches', matchId));
+    alert('✅ Meccs törölve!');
+  } catch (error) {
+    console.error('Hiba a meccs törlésekor:', error);
+    alert('❌ Hiba: ' + error.message);
+  }
+};
+
+// Összes meccs megjelenítése mindenki számára (Eredmények fül)
+function renderAllMatchesForUsers() {
+  const container = document.getElementById('all-matches-list-container');
+  if (!container) return;
+  
+  if (state.matches.length === 0) {
+    container.innerHTML = '<p class="muted">Még nincs rögzített meccs</p>';
+    return;
+  }
+  
+  // Csoportosítás ligák szerint
+  const sortedLeagues = [...state.leagues].sort((a, b) => (a.order || 0) - (b.order || 0));
+  
+  container.innerHTML = sortedLeagues.map(league => {
+    const leagueMatches = state.matches.filter(m => m.leagueId === league.id);
+    
+    if (leagueMatches.length === 0) return '';
+    
+    return `
+      <div style="margin-bottom: 24px;">
+        <h4 style="color: #d4af37; margin-bottom: 12px;">⚽ ${league.name}</h4>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 100px;">Dátum</th>
+              <th>Hazai</th>
+              <th style="width: 80px;">Eredmény</th>
+              <th>Vendég</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${leagueMatches.map(match => {
+              const homePlayer = state.players.find(p => p.id === match.homePlayerId);
+              const awayPlayer = state.players.find(p => p.id === match.awayPlayerId);
+              const date = match.createdAt ? new Date(match.createdAt.seconds * 1000).toLocaleDateString('hu-HU', {month: 'short', day: 'numeric'}) : '-';
+              
+              return `
+                <tr>
+                  <td>${date}</td>
+                  <td>${homePlayer ? homePlayer.name : '-'}</td>
+                  <td style="font-weight: 800; font-size: 16px; text-align: center;">${match.homeGoals} - ${match.awayGoals}</td>
+                  <td>${awayPlayer ? awayPlayer.name : '-'}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }).join('');
+}
+
+// --- PLAYOFF MECCS KEZELÉS ---
+const playoffMatchId = document.getElementById('playoffMatchId');
+const playoffHomePlayer = document.getElementById('playoffHomePlayer');
+const playoffAwayPlayer = document.getElementById('playoffAwayPlayer');
+const playoffHomeGoals = document.getElementById('playoffHomeGoals');
+const playoffAwayGoals = document.getElementById('playoffAwayGoals');
+const addPlayoffMatchBtn = document.getElementById('addPlayoffMatchBtn');
+const playoffMatchMessage = document.getElementById('playoffMatchMessage');
+
+if (addPlayoffMatchBtn) {
+  addPlayoffMatchBtn.addEventListener('click', async () => {
+    if (!adminStatus.isMaster) {
+      playoffMatchMessage.textContent = '❌ Csak Master Admin rögzíthet playoff meccseket!';
+      return;
+    }
+    
+    const matchId = playoffMatchId.value.trim();
+    const homePlayer = playoffHomePlayer.value.trim();
+    const awayPlayer = playoffAwayPlayer.value.trim();
+    const homeGoals = parseInt(playoffHomeGoals.value) || 0;
+    const awayGoals = parseInt(playoffAwayGoals.value) || 0;
+    
+    if (!matchId || !homePlayer || !awayPlayer) {
+      playoffMatchMessage.textContent = '❌ Töltsd ki az összes mezőt!';
+      return;
+    }
+    
+    try {
+      await addDoc(playoffMatchesCol, {
+        matchId,
+        homePlayer,
+        awayPlayer,
+        homeGoals,
+        awayGoals,
+        createdAt: serverTimestamp()
+      });
+      
+      playoffMatchMessage.textContent = `✅ Playoff meccs rögzítve: ${homePlayer} ${homeGoals}-${awayGoals} ${awayPlayer}`;
+      playoffMatchId.value = '';
+      playoffHomePlayer.value = '';
+      playoffAwayPlayer.value = '';
+      playoffHomeGoals.value = 0;
+      playoffAwayGoals.value = 0;
+      
+      renderPlayoffBracket();
+    } catch (error) {
+      console.error('Hiba a playoff meccs rögzítésekor:', error);
+      playoffMatchMessage.textContent = '❌ Hiba: ' + error.message;
+    }
+  });
+}
+
 // --- LISTENERS ---
 function startListeners() {
   unsub.push(onSnapshot(leaguesCol, snap => { state.leagues = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUIFast(); }));
   unsub.push(onSnapshot(playersCol, snap => { state.players = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUI(); }));
   unsub.push(onSnapshot(query(matchesCol, orderBy("createdAt", "desc")), snap => { state.matches = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUI(); }));
   unsub.push(onSnapshot(query(playoffMatchesCol, orderBy("createdAt", "desc")), snap => { state.playoffMatches = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUI(); }));
-  unsub.push(onSnapshot(playinPairsCol, snap => { state.playinPairs = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUI(); }));
-  unsub.push(onSnapshot(query(archivesCol, orderBy("finishedAt", "desc")), snap => { state.archives = snap.docs.map(d => ({id: d.id, ...d.data()})); updateArchiveDisplay(); }));
+  // unsub.push(onSnapshot(playinPairsCol, snap => { state.playinPairs = snap.docs.map(d => ({id: d.id, ...d.data()})); refreshUI(); }));
+  unsub.push(onSnapshot(query(archivesCol, orderBy("createdAt", "desc")), snap => { state.archives = snap.docs.map(d => ({id: d.id, ...d.data()})); }));
 }
+
+// Indítjuk a listenereket és UI-t az initApp()-on belül
 startListeners();
+refreshUI();
 
 // --- HELPERS ---
 function getGroupById(id) { return state.groups.find(g => g.id === id); }
@@ -215,12 +712,120 @@ function getSortedGroups() {
 
 // --- UI REFRESH ---
 function refreshUI() {
-  // TODO: Itt lesznek a liga táblák renderelése
+  renderLeaguePlayers();
+  renderLeagueTables();
+  refreshMatchLeagueSelect();
+  renderMatchesList();
+  renderAllMatchesForUsers();
+  renderPlayoffBracket();
   console.log('refreshUI called');
 }
 
 function refreshUIFast() {
+  renderLeagueTables();
+  renderAllMatchesForUsers();
   console.log('refreshUIFast called');
+}
+
+// Liga táblázatok renderelése a főoldalon
+function renderLeagueTables() {
+  const container = document.getElementById('leagues-tables-container');
+  if (!container) return;
+  
+  if (state.leagues.length === 0) {
+    container.innerHTML = '<div class="card"><p class="muted">A ligák még nincsenek inicializálva. Jelentkezz be Master Adminként és inicializáld őket.</p></div>';
+    return;
+  }
+  
+  const sortedLeagues = [...state.leagues].sort((a, b) => (a.order || 0) - (b.order || 0));
+  
+  container.innerHTML = sortedLeagues.map(league => {
+    const players = state.players.filter(p => p.leagueId === league.id);
+    
+    // Számítsuk ki az állást (egyelőre csak játékosok száma, később meccsek alapján)
+    const standings = players.map(player => {
+      const playerMatches = state.matches.filter(m => 
+        m.leagueId === league.id && (m.homePlayerId === player.id || m.awayPlayerId === player.id)
+      );
+      
+      let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0;
+      
+      playerMatches.forEach(match => {
+        const isHome = match.homePlayerId === player.id;
+        const scored = isHome ? (match.homeGoals || 0) : (match.awayGoals || 0);
+        const conceded = isHome ? (match.awayGoals || 0) : (match.homeGoals || 0);
+        
+        goalsFor += scored;
+        goalsAgainst += conceded;
+        
+        if (scored > conceded) wins++;
+        else if (scored === conceded) draws++;
+        else losses++;
+      });
+      
+      const matchPoints = wins * 3 + draws;
+      const adjustment = player.adjustment || 0;
+      const points = matchPoints + adjustment;
+      const gd = goalsFor - goalsAgainst;
+      
+      return {
+        name: player.name,
+        played: playerMatches.length,
+        wins,
+        draws,
+        losses,
+        goalsFor,
+        goalsAgainst,
+        gd,
+        matchPoints,
+        adjustment,
+        points
+      };
+    }).sort((a, b) => b.points - a.points || b.gd - a.gd || b.goalsFor - a.goalsFor);
+    
+    return `
+      <div class="card" style="margin-top: 20px;">
+        <h3 style="color: #d4af37; margin-bottom: 16px;">⚽ ${league.name}</h3>
+        ${players.length === 0 ? '<p class="muted">Nincs játékos ebben a ligában</p>' : `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 40px;">#</th>
+                <th>Név</th>
+                <th style="width: 50px;">M</th>
+                <th style="width: 50px;">GY</th>
+                <th style="width: 50px;">D</th>
+                <th style="width: 50px;">V</th>
+                <th style="width: 60px;">GF</th>
+                <th style="width: 60px;">GA</th>
+                <th style="width: 60px;">GD</th>
+                <th style="width: 60px;">P</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${standings.map((st, idx) => {
+                const adjustmentDisplay = st.adjustment !== 0 ? ` <small style="color: ${st.adjustment > 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">(${st.adjustment > 0 ? '+' : ''}${st.adjustment})</small>` : '';
+                return `
+                <tr style="${idx < 4 ? 'background: rgba(212,175,55,0.1); border-left: 3px solid #d4af37;' : ''}">
+                  <td style="font-weight: 700; color: ${idx < 4 ? '#d4af37' : '#9ca3af'};">${idx + 1}</td>
+                  <td style="font-weight: 600;">${st.name}</td>
+                  <td>${st.played}</td>
+                  <td>${st.wins}</td>
+                  <td>${st.draws}</td>
+                  <td>${st.losses}</td>
+                  <td>${st.goalsFor}</td>
+                  <td>${st.goalsAgainst}</td>
+                  <td style="font-weight: 600;">${st.gd > 0 ? '+' : ''}${st.gd}</td>
+                  <td style="font-weight: 800; font-size: 16px;">${st.points}${adjustmentDisplay}</td>
+                </tr>
+              `}).join('')}
+            </tbody>
+          </table>
+          ${standings.length >= 4 ? '<p class="muted" style="margin-top: 12px; font-size: 12px;">🏆 Az első 4 helyezett továbbjut a Top 16 playoffba</p>' : ''}
+        `}
+      </div>
+    `;
+  }).join('');
 }
 
 // --- CSOPORT KEZELÉS --- (RÉGI KÓD - KOMMENTEZVE)
@@ -275,57 +880,6 @@ function refreshGroupSelects() {
     }
   });
 }
-
-// --- MECCS RÖGZÍTÉS ---
-const matchGroupSelect = document.getElementById("matchGroupSelect");
-const homePlayerSelect = document.getElementById("homePlayerSelect");
-const awayPlayerSelect = document.getElementById("awayPlayerSelect");
-const homeGoalsInput = document.getElementById("homeGoalsInput");
-const awayGoalsInput = document.getElementById("awayGoalsInput");
-const addMatchBtn = document.getElementById("addMatchBtn");
-const matchMessage = document.getElementById("matchMessage");
-
-function refreshMatchPlayerSelects() {
-  const gid = matchGroupSelect?.value;
-  [homePlayerSelect, awayPlayerSelect].forEach(sel => {
-      if(sel) sel.innerHTML = "<option value=''>-- Válassz --</option>";
-  });
-  if (!gid) return;
-  getPlayersByGroup(gid).sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
-    const opt = document.createElement("option");
-    opt.value = p.id;
-    opt.textContent = p.name;
-    if(homePlayerSelect) homePlayerSelect.appendChild(opt.cloneNode(true));
-    if(awayPlayerSelect) awayPlayerSelect.appendChild(opt);
-  });
-}
-if (matchGroupSelect) matchGroupSelect.addEventListener("change", refreshMatchPlayerSelects);
-
-if (addMatchBtn) {
-    addMatchBtn.onclick = async () => {
-      if (!isAdmin) return;
-      const gid = matchGroupSelect.value;
-      const home = homePlayerSelect.value;
-      const away = awayPlayerSelect.value;
-      const hg = parseInt(homeGoalsInput.value) || 0;
-      const ag = parseInt(awayGoalsInput.value) || 0;
-      if (!gid || !home || !away || home === away || hg < 0 || ag < 0) {
-        matchMessage.textContent = "Hibás adatok";
-        return;
-      }
-      await addDoc(matchesCol, { groupId: gid, homeId: home, awayId: away, homeGoals: hg, awayGoals: ag, createdAt: serverTimestamp() });
-      homeGoalsInput.value = awayGoalsInput.value = "0";
-      matchMessage.textContent = "Meccs mentve";
-    };
-}
-
-// --- JÁTÉKOSOK ÉS PONTMÓDOSÍTÁSOK ---
-const playerNameInput = document.getElementById("playerNameInput");
-const playerGroupSelect = document.getElementById("playerGroupSelect");
-const addPlayerBtn = document.getElementById("addPlayerBtn");
-const playerMessage = document.getElementById("playerMessage");
-const playersTableBody = document.getElementById("playersTableBody");
-const playerCountInfo = document.getElementById("playerCountInfo");
 
 if (addPlayerBtn) {
     addPlayerBtn.onclick = async () => {
@@ -559,10 +1113,36 @@ function renderMatchesTable() {
 const clearAllBtn = document.getElementById("clearAllBtn");
 if (clearAllBtn) {
     clearAllBtn.onclick = async () => {
-      if (!isAdmin || !confirm("Minden adat törlése?")) return;
-      for (const col of [groupsCol, playersCol, matchesCol, playoffMatchesCol, playinPairsCol]) {
-        const snap = await getDocs(col);
-        for (const d of snap.docs) await deleteDoc(doc(db, col.path, d.id));
+      if (!adminStatus.isMaster) {
+        alert('❌ Csak Master Admin törölhet minden adatot!');
+        return;
+      }
+      
+      if (!confirm("⚠️ FIGYELEM! Ez véglegesen törli:\n- Összes ligát\n- Összes játékost\n- Összes meccset\n- Összes playoff eredményt\n\nBiztosan folytatod?")) return;
+      
+      if (!confirm("🚨 UTOLSÓ FIGYELMEZTETÉS! Ez NEM VISSZAVONHATÓ!\n\nMentsd el archívba előtte, ha szükséges!\n\nBiztosan törlöd az összes adatot?")) return;
+      
+      try {
+        // Töröljük az összes kollekciót
+        const collections = [
+          { col: leaguesCol, name: 'leagues' },
+          { col: playersCol, name: 'players' },
+          { col: matchesCol, name: 'matches' },
+          { col: playoffMatchesCol, name: 'playoff_matches' }
+        ];
+        
+        for (const { col, name } of collections) {
+          const snap = await getDocs(col);
+          for (const d of snap.docs) {
+            await deleteDoc(doc(db, name, d.id));
+          }
+        }
+        
+        alert('✅ Összes adat törölve! Az oldal újratöltődik.');
+        location.reload();
+      } catch (error) {
+        console.error('Hiba a törlés során:', error);
+        alert('❌ Hiba történt a törlés során: ' + error.message);
       }
     };
 }
@@ -904,15 +1484,7 @@ function renderAdminPlayoffMatches() {
     });
 }
 
-// --- PLAYOFF ADMIN NÉZET ---
-const playinPairSetup = document.getElementById("playin-pair-setup");
-const playoffRoundSelect = document.getElementById("playoffRoundSelect");
-const playoffHomeSelect = document.getElementById("playoffHomeSelect");
-const playoffAwaySelect = document.getElementById("playoffAwaySelect");
-const playoffHomeGoals = document.getElementById("playoffHomeGoals");
-const playoffAwayGoals = document.getElementById("playoffAwayGoals");
-const addPlayoffMatchBtn = document.getElementById("addPlayoffMatchBtn");
-const playoffMatchMessage = document.getElementById("playoffMatchMessage");
+
 const archiveNameInput = document.getElementById("archiveNameInput");
 const saveArchiveBtn = document.getElementById("saveArchiveBtn");
 const archiveMessage = document.getElementById("archiveMessage");
@@ -1087,8 +1659,8 @@ function deriveChampion() {
 }
 
 async function saveArchive() {
-  if (!isAdmin) {
-    if (archiveMessage) archiveMessage.textContent = "Csak admin menthet";
+  if (!adminStatus.isMaster) {
+    if (archiveMessage) archiveMessage.textContent = "Csak Master Admin menthet archívumot";
     return;
   }
   if (archiveMessage) archiveMessage.textContent = "Mentés...";
@@ -1099,21 +1671,26 @@ async function saveArchive() {
     name,
     finishedAt: serverTimestamp(),
     champion,
-    groups: state.groups,
+    leagues: state.leagues,
     players: state.players,
     matches: state.matches,
-    playoffMatches: state.playoffMatches,
-    playinPairs: state.playinPairs
+    playoffMatches: state.playoffMatches
   };
 
   try {
     await addDoc(archivesCol, payload);
     if (archiveNameInput) archiveNameInput.value = "";
-    if (archiveMessage) archiveMessage.textContent = "Bajnokság elmentve az archívumba (Firebase)";
-    alert("Bajnokság elmentve! Az archívot a főoldalon tudod megnézni.");
+    if (archiveMessage) {
+      archiveMessage.textContent = "✅ Bajnokság elmentve az archívumba!";
+      archiveMessage.style.color = "#10b981";
+    }
+    alert("✅ Bajnokság sikeresen elmentve az archívumba!");
   } catch (error) {
     console.error("Archív mentési hiba:", error);
-    if (archiveMessage) archiveMessage.textContent = `Hiba: ${error.message}`;
+    if (archiveMessage) {
+      archiveMessage.textContent = `❌ Hiba: ${error.message}`;
+      archiveMessage.style.color = "#ef4444";
+    }
   }
 }
 
@@ -1192,9 +1769,6 @@ if (togglePlayinBtn) {
     togglePlayinBtn.innerHTML = `<span id="togglePlayinIcon">${isHidden ? "▲" : "▼"}</span> Play-in meccsek ${isHidden ? "elrejtése" : "megjelenítése"}`;
   });
 }
-
-// Kezdés
-refreshUI();
 
 } // initApp() vége
 
