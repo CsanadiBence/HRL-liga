@@ -811,6 +811,66 @@ button:active {
   .match .team .score {
     font-size: 14px;
   }
+
+  /* Championship Bracket mobilon - csak a belső elemek kisebbek (zoom-out effekt) */
+  .bracket-round-label {
+    font-size: 11px;
+  }
+
+  .bracket-match {
+    padding: 10px 12px;
+    margin-bottom: 30px;
+  }
+
+  .bracket-match .team {
+    padding: 8px 10px;
+  }
+
+  .bracket-match .team-name {
+    font-size: 12px;
+  }
+
+  .bracket-match .team-score {
+    font-size: 16px;
+  }
+
+  .bracket-match .seed {
+    font-size: 10px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
+}
+
+/* Extra kicsi mobilok (768px alatt) - még kisebb zoom */
+@media (max-width: 768px) {
+  .bracket-round-label {
+    font-size: 10px;
+  }
+
+  .bracket-match {
+    padding: 8px 10px;
+    margin-bottom: 25px;
+  }
+
+  .bracket-match .team {
+    padding: 6px 8px;
+  }
+
+  .bracket-match .team-name {
+    font-size: 11px;
+  }
+
+  .bracket-match .team-score {
+    font-size: 14px;
+  }
+
+  .bracket-match .seed {
+    font-size: 9px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+  }
 }
 
 /* OLD STYLES REMOVED - Keep team styling */
