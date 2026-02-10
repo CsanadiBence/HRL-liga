@@ -223,13 +223,15 @@
         <p class="muted">Egyenes kieséses rendszer - Champions League stílusú playofffa</p>
       </div>
 
-      <!-- Playoff meccs rögzítés -->
+      <!-- 1. PÁROSÍTÁSOK BEÁLLÍTÁSA -->
       <div class="card master-only admin-only-view">
-        <h3>Playoff meccs rögzítése</h3>
+        <h3>1. Párosítások beállítása</h3>
+        <p class="muted" style="margin-bottom: 15px;">Előbb állítsd be ki kivel játszik, utána rögzítheted az eredményt</p>
         <div class="form-row">
           <div class="form-field">
             <label>Forduló</label>
-            <select id="playoffRoundSelect">
+            <select id="pairingRoundSelect">
+              <option value="">-- Válassz fordulót --</option>
               <option value="r16">Nyolcaddöntő (R16)</option>
               <option value="quarter">Negyeddöntő (QF)</option>
               <option value="semi">Elődöntő (SF)</option>
@@ -238,28 +240,66 @@
             </select>
           </div>
           <div class="form-field">
-            <label>Meccs ID</label>
-            <input id="playoffMatchId" type="text" placeholder="pl. r16-1, q-1, s-1, final, bronze">
+            <label>Meccs</label>
+            <select id="pairingMatchSelect">
+              <option value="">-- Először válassz fordulót --</option>
+            </select>
           </div>
           <div class="form-field">
             <label>Hazai játékos</label>
-            <input id="playoffHomePlayer" type="text" placeholder="Játékos neve">
-          </div>
-          <div class="form-field small">
-            <label>Gól</label>
-            <input id="playoffHomeGoals" type="number" min="0" value="0">
-          </div>
-          <div class="form-field small">
-            <label>Gól</label>
-            <input id="playoffAwayGoals" type="number" min="0" value="0">
+            <input id="pairingHomePlayer" type="text" placeholder="Játékos neve">
           </div>
           <div class="form-field">
             <label>Vendég játékos</label>
-            <input id="playoffAwayPlayer" type="text" placeholder="Játékos neve">
+            <input id="pairingAwayPlayer" type="text" placeholder="Játékos neve">
           </div>
-          <button id="addPlayoffMatchBtn">Playoff meccs mentése</button>
+          <button id="addPairingBtn" style="background: linear-gradient(135deg, #10b981, #059669);">Párosítás mentése</button>
         </div>
-        <p id="playoffMatchMessage" class="muted" style="margin-top: 8px;"></p>
+        <p id="pairingMessage" class="muted" style="margin-top: 8px;"></p>
+      </div>
+
+      <!-- 2. EREDMÉNYEK RÖGZÍTÉSE -->
+      <div class="card master-only admin-only-view">
+        <h3>2. Eredmények rögzítése</h3>
+        <p class="muted" style="margin-bottom: 15px;">Válaszd ki a meccset és add meg az eredményt</p>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Forduló</label>
+            <select id="resultRoundSelect">
+              <option value="">-- Válassz fordulót --</option>
+              <option value="r16">Nyolcaddöntő (R16)</option>
+              <option value="quarter">Negyeddöntő (QF)</option>
+              <option value="semi">Elődöntő (SF)</option>
+              <option value="final">Döntő</option>
+              <option value="bronze">Bronzmeccs</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Meccs</label>
+            <select id="resultMatchSelect">
+              <option value="">-- Először válassz fordulót --</option>
+            </select>
+          </div>
+          <div class="form-field small">
+            <label>Hazai gól</label>
+            <input id="resultHomeGoals" type="number" min="0" value="0">
+          </div>
+          <div class="form-field small">
+            <label>Vendég gól</label>
+            <input id="resultAwayGoals" type="number" min="0" value="0">
+          </div>
+          <button id="addResultBtn" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);">Eredmény rögzítése</button>
+        </div>
+        <p id="resultMessage" class="muted" style="margin-top: 8px;"></p>
+      </div>
+
+      <!-- 3. PÁROSÍTÁSOK LISTÁJA ÉS TÖRLÉSE -->
+      <div class="card master-only admin-only-view">
+        <h3>3. Meglévő párosítások kezelése</h3>
+        <p class="muted" style="margin-bottom: 15px;">Itt láthatod és törölheted a beállított párosításokat</p>
+        <div id="playoffPairingsListContainer">
+          <p class="muted">Betöltés...</p>
+        </div>
       </div>
 
       <!-- Championship Bracket -->
