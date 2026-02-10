@@ -635,54 +635,364 @@ function renderAllMatchesForUsers() {
   }).join('');
 }
 
-// --- PLAYOFF MECCS KEZELÉS ---
-const playoffMatchId = document.getElementById('playoffMatchId');
-const playoffHomePlayer = document.getElementById('playoffHomePlayer');
-const playoffAwayPlayer = document.getElementById('playoffAwayPlayer');
-const playoffHomeGoals = document.getElementById('playoffHomeGoals');
-const playoffAwayGoals = document.getElementById('playoffAwayGoals');
-const addPlayoffMatchBtn = document.getElementById('addPlayoffMatchBtn');
-const playoffMatchMessage = document.getElementById('playoffMatchMessage');
+// --- PLAYOFF PÁROSÍTÁSOK ÉS EREDMÉNYEK ---
 
-if (addPlayoffMatchBtn) {
-  addPlayoffMatchBtn.addEventListener('click', async () => {
+// Helper funkció: seed párok megjelenítése
+function getSeedPair(matchNum) {
+  const pairs = {
+    1: '1. vs 16.',
+    2: '8. vs 9.',
+    3: '5. vs 12.',
+    4: '4. vs 13.',
+    5: '6. vs 11.',
+    6: '3. vs 14.',
+    7: '7. vs 10.',
+    8: '2. vs 15.'
+  };
+  return pairs[matchNum] || '';
+}
+
+// Helper funkció: meccs opciók generálása forduló alapján
+function generateMatchOptions(round) {
+  let options = '<option value="">-- Válassz meccset --</option>';
+  
+  if (round === 'r16') {
+    for (let i = 1; i <= 8; i++) {
+      options += `<option value="r16-${i}">R16 Meccs ${i} (${getSeedPair(i)})</option>`;
+    }
+  } else if (round === 'quarter') {
+    for (let i = 1; i <= 4; i++) {
+      options += `<option value="q-${i}">QF Meccs ${i}</option>`;
+    }
+  } else if (round === 'semi') {
+    for (let i = 1; i <= 2; i++) {
+      options += `<option value="s-${i}">SF Meccs ${i}</option>`;
+    }
+  } else if (round === 'final') {
+    options += '<option value="final">Döntő</option>';
+  } else if (round === 'bronze') {
+    options += '<option value="bronze">Bronzmeccs</option>';
+  }
+  
+  return options;
+}
+
+// 1. PÁROSÍTÁSOK BEÁLLÍTÁSA
+const pairingRoundSelect = document.getElementById('pairingRoundSelect');
+const pairingMatchSelect = document.getElementById('pairingMatchSelect');
+const pairingHomePlayer = document.getElementById('pairingHomePlayer');
+const pairingAwayPlayer = document.getElementById('pairingAwayPlayer');
+const addPairingBtn = document.getElementById('addPairingBtn');
+const pairingMessage = document.getElementById('pairingMessage');
+
+if (pairingRoundSelect) {
+  pairingRoundSelect.addEventListener('change', () => {
+    const round = pairingRoundSelect.value;
+    if (!round) {
+      pairingMatchSelect.innerHTML = '<option value="">-- Először válassz fordulót --</option>';
+      return;
+    }
+    pairingMatchSelect.innerHTML = generateMatchOptions(round);
+  });
+}
+
+if (addPairingBtn) {
+  addPairingBtn.addEventListener('click', async () => {
     if (!adminStatus.isMaster) {
-      playoffMatchMessage.textContent = '❌ Csak Master Admin rögzíthet playoff meccseket!';
+      pairingMessage.textContent = '❌ Csak Master Admin állíthat be párosításokat!';
       return;
     }
     
-    const matchId = playoffMatchId.value.trim();
-    const homePlayer = playoffHomePlayer.value.trim();
-    const awayPlayer = playoffAwayPlayer.value.trim();
-    const homeGoals = parseInt(playoffHomeGoals.value) || 0;
-    const awayGoals = parseInt(playoffAwayGoals.value) || 0;
+    const matchId = pairingMatchSelect.value.trim();
+    const homePlayer = pairingHomePlayer.value.trim();
+    const awayPlayer = pairingAwayPlayer.value.trim();
     
     if (!matchId || !homePlayer || !awayPlayer) {
-      playoffMatchMessage.textContent = '❌ Töltsd ki az összes mezőt!';
+      pairingMessage.textContent = '❌ Töltsd ki az összes mezőt!';
       return;
     }
     
     try {
-      await addDoc(playoffMatchesCol, {
-        matchId,
-        homePlayer,
-        awayPlayer,
-        homeGoals,
-        awayGoals,
-        createdAt: serverTimestamp()
-      });
+      // Ellenőrizzük, létezik-e már ez a meccs
+      const existingMatch = state.playoffMatches.find(m => m.matchId === matchId);
       
-      playoffMatchMessage.textContent = `✅ Playoff meccs rögzítve: ${homePlayer} ${homeGoals}-${awayGoals} ${awayPlayer}`;
-      playoffMatchId.value = '';
-      playoffHomePlayer.value = '';
-      playoffAwayPlayer.value = '';
-      playoffHomeGoals.value = 0;
-      playoffAwayGoals.value = 0;
+      if (existingMatch) {
+        // Frissítjük a meglévő párosítást
+        const matchRef = doc(db, 'playoff_matches', existingMatch.id);
+        await updateDoc(matchRef, {
+          homePlayer,
+          awayPlayer
+        });
+        pairingMessage.textContent = `✅ Párosítás frissítve: ${homePlayer} vs ${awayPlayer}`;
+      } else {
+        // Új párosítás létrehozása (eredmény még nincs)
+        await addDoc(playoffMatchesCol, {
+          matchId,
+          homePlayer,
+          awayPlayer,
+          homeGoals: null,
+          awayGoals: null,
+          createdAt: serverTimestamp()
+        });
+        pairingMessage.textContent = `✅ Párosítás mentve: ${homePlayer} vs ${awayPlayer}`;
+      }
+      
+      pairingRoundSelect.value = '';
+      pairingMatchSelect.innerHTML = '<option value="">-- Először válassz fordulót --</option>';
+      pairingHomePlayer.value = '';
+      pairingAwayPlayer.value = '';
       
       renderPlayoffBracket();
     } catch (error) {
-      console.error('Hiba a playoff meccs rögzítésekor:', error);
-      playoffMatchMessage.textContent = '❌ Hiba: ' + error.message;
+      console.error('Hiba a párosítás mentésekor:', error);
+      pairingMessage.textContent = '❌ Hiba: ' + error.message;
+    }
+  });
+}
+
+// 2. EREDMÉNYEK RÖGZÍTÉSE
+const resultRoundSelect = document.getElementById('resultRoundSelect');
+const resultMatchSelect = document.getElementById('resultMatchSelect');
+const resultHomeGoals = document.getElementById('resultHomeGoals');
+const resultAwayGoals = document.getElementById('resultAwayGoals');
+const addResultBtn = document.getElementById('addResultBtn');
+const resultMessage = document.getElementById('resultMessage');
+
+if (resultRoundSelect) {
+  resultRoundSelect.addEventListener('change', () => {
+    const round = resultRoundSelect.value;
+    if (!round) {
+      resultMatchSelect.innerHTML = '<option value="">-- Először válassz fordulót --</option>';
+      return;
+    }
+    
+    // Szűrjük a meccseket a forduló alapján
+    const roundMatches = state.playoffMatches.filter(m => {
+      if (round === 'r16') return m.matchId.startsWith('r16-');
+      if (round === 'quarter') return m.matchId.startsWith('q-');
+      if (round === 'semi') return m.matchId.startsWith('s-');
+      if (round === 'final') return m.matchId === 'final';
+      if (round === 'bronze') return m.matchId === 'bronze';
+      return false;
+    });
+    
+    let options = '<option value="">-- Válassz meccset --</option>';
+    
+    if (roundMatches.length > 0) {
+      roundMatches.forEach(match => {
+        const hasResult = match.homeGoals !== null && match.awayGoals !== null;
+        const resultText = hasResult ? ` (${match.homeGoals}-${match.awayGoals})` : ' (még nincs eredmény)';
+        options += `<option value="${match.matchId}">${match.homePlayer} vs ${match.awayPlayer}${resultText}</option>`;
+      });
+    } else {
+      options += '<option value="">Nincs még párosítás ebben a fordulóban</option>';
+    }
+    
+    resultMatchSelect.innerHTML = options;
+  });
+}
+
+if (addResultBtn) {
+  addResultBtn.addEventListener('click', async () => {
+    if (!adminStatus.isMaster) {
+      resultMessage.textContent = '❌ Csak Master Admin rögzíthet eredményeket!';
+      return;
+    }
+    
+    const matchId = resultMatchSelect.value.trim();
+    const homeGoals = parseInt(resultHomeGoals.value);
+    const awayGoals = parseInt(resultAwayGoals.value);
+    
+    if (!matchId) {
+      resultMessage.textContent = '❌ Válassz meccset!';
+      return;
+    }
+    
+    if (isNaN(homeGoals) || isNaN(awayGoals) || homeGoals < 0 || awayGoals < 0) {
+      resultMessage.textContent = '❌ Add meg mindkét csapat gólját!';
+      return;
+    }
+    
+    try {
+      const match = state.playoffMatches.find(m => m.matchId === matchId);
+      
+      if (!match) {
+        resultMessage.textContent = '❌ Nem található ilyen párosítás!';
+        return;
+      }
+      
+      const matchRef = doc(db, 'playoff_matches', match.id);
+      await updateDoc(matchRef, {
+        homeGoals,
+        awayGoals
+      });
+      
+      resultMessage.textContent = `✅ Eredmény rögzítve: ${match.homePlayer} ${homeGoals}-${awayGoals} ${match.awayPlayer}`;
+      resultRoundSelect.value = '';
+      resultMatchSelect.innerHTML = '<option value="">-- Először válassz fordulót --</option>';
+      resultHomeGoals.value = 0;
+      resultAwayGoals.value = 0;
+      
+      renderPlayoffBracket();
+    } catch (error) {
+      console.error('Hiba az eredmény rögzítésekor:', error);
+      resultMessage.textContent = '❌ Hiba: ' + error.message;
+    }
+  });
+}
+
+// 3. PÁROSÍTÁSOK LISTÁJA ÉS TÖRLÉSE
+function renderPlayoffPairingsList() {
+  const container = document.getElementById('playoffPairingsListContainer');
+  if (!container) return;
+  
+  if (state.playoffMatches.length === 0) {
+    container.innerHTML = '<p class="muted">Még nincs beállított párosítás</p>';
+    return;
+  }
+  
+  const roundNames = {
+    'r16': 'Nyolcaddöntő',
+    'q': 'Negyeddöntő',
+    's': 'Elődöntő',
+    'final': 'Döntő',
+    'bronze': 'Bronzmeccs'
+  };
+  
+  // Csoportosítás forduló szerint
+  const grouped = {};
+  state.playoffMatches.forEach(match => {
+    let roundKey = 'other';
+    if (match.matchId.startsWith('r16-')) roundKey = 'r16';
+    else if (match.matchId.startsWith('q-')) roundKey = 'q';
+    else if (match.matchId.startsWith('s-')) roundKey = 's';
+    else if (match.matchId === 'final') roundKey = 'final';
+    else if (match.matchId === 'bronze') roundKey = 'bronze';
+    
+    if (!grouped[roundKey]) grouped[roundKey] = [];
+    grouped[roundKey].push(match);
+  });
+  
+  let html = '';
+  const roundOrder = ['r16', 'q', 's', 'final', 'bronze'];
+  
+  roundOrder.forEach(roundKey => {
+    if (!grouped[roundKey]) return;
+    
+    html += `<div style="margin-bottom: 20px;">
+      <h4 style="color: var(--accent-gold); margin-bottom: 10px;">${roundNames[roundKey] || roundKey}</h4>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Meccs ID</th>
+            <th>Párosítás</th>
+            <th>Eredmény</th>
+            <th style="width: 100px;">Műveletek</th>
+          </tr>
+        </thead>
+        <tbody>`;
+    
+    grouped[roundKey].forEach(match => {
+      const hasResult = match.homeGoals !== null && match.awayGoals !== null;
+      const resultText = hasResult ? `${match.homeGoals} - ${match.awayGoals}` : 'Még nincs eredmény';
+      const resultColor = hasResult ? 'color: var(--primary-blue); font-weight: 700;' : 'color: #94a3b8;';
+      
+      html += `
+        <tr>
+          <td style="font-family: monospace; color: var(--accent-gold);">${match.matchId}</td>
+          <td class="left">${match.homePlayer} <span style="color: #64748b;">vs</span> ${match.awayPlayer}</td>
+          <td style="${resultColor}">${resultText}</td>
+          <td>
+            <button onclick="deletePlayoffPairing('${match.id}')" style="padding: 6px 12px; background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); border-radius: 6px; color: #ef4444; cursor: pointer; font-size: 12px; font-weight: 600;">Törlés</button>
+          </td>
+        </tr>`;
+    });
+    
+    html += `</tbody></table></div>`;
+  });
+  
+  container.innerHTML = html;
+}
+
+// Párosítás törlése
+window.deletePlayoffPairing = async (pairingId) => {
+  if (!adminStatus.isMaster) {
+    alert('❌ Csak Master Admin törölhet párosításokat!');
+    return;
+  }
+  
+  if (!confirm('Biztosan törölni szeretnéd ezt a párosítást? (Az eredmény is törlődik!)')) return;
+  
+  try {
+    await deleteDoc(doc(db, 'playoff_matches', pairingId));
+    alert('✅ Párosítás törölve!');
+    renderPlayoffBracket();
+  } catch (error) {
+    console.error('Hiba a párosítás törlésekor:', error);
+    alert('❌ Hiba: ' + error.message);
+  }
+};
+
+// Playoff bracket renderelése (egyszerű, matchId alapú)
+function renderPlayoffBracket() {
+  // Minden bracket meccset frissítünk
+  const allMatchIds = [
+    'r16-1', 'r16-2', 'r16-3', 'r16-4', 'r16-5', 'r16-6', 'r16-7', 'r16-8',
+    'q-1', 'q-2', 'q-3', 'q-4',
+    's-1', 's-2',
+    'final',
+    'bronze'
+  ];
+  
+  allMatchIds.forEach(matchId => {
+    const matchEl = document.querySelector(`[data-id="${matchId}"]`);
+    if (!matchEl) return;
+    
+    // Keresünk rá playoff meccs adatot
+    const matchData = state.playoffMatches.find(m => m.matchId === matchId);
+    
+    const teams = matchEl.querySelectorAll('.team');
+    
+    if (matchData) {
+      // Van párosítás vagy eredmény
+      const homeName = matchData.homePlayer || '-';
+      const awayName = matchData.awayPlayer || '-';
+      const homeScore = matchData.homeGoals !== null && matchData.homeGoals !== undefined ? matchData.homeGoals : '-';
+      const awayScore = matchData.awayGoals !== null && matchData.awayGoals !== undefined ? matchData.awayGoals : '-';
+      
+      const hasResult = matchData.homeGoals !== null && matchData.awayGoals !== null;
+      const winner = hasResult && homeScore > awayScore ? 'home' : hasResult && awayScore > homeScore ? 'away' : '';
+      
+      if (teams[0]) {
+        teams[0].className = `team ${winner === 'home' ? 'winner' : ''}`;
+        const nameEl = teams[0].querySelector('.name');
+        const scoreEl = teams[0].querySelector('.score');
+        if (nameEl) nameEl.textContent = homeName;
+        if (scoreEl) scoreEl.textContent = homeScore;
+      }
+      if (teams[1]) {
+        teams[1].className = `team ${winner === 'away' ? 'winner' : ''}`;
+        const nameEl = teams[1].querySelector('.name');
+        const scoreEl = teams[1].querySelector('.score');
+        if (nameEl) nameEl.textContent = awayName;
+        if (scoreEl) scoreEl.textContent = awayScore;
+      }
+    } else {
+      // Nincs adat, üres mezők
+      if (teams[0]) {
+        teams[0].className = 'team';
+        const nameEl = teams[0].querySelector('.name');
+        const scoreEl = teams[0].querySelector('.score');
+        if (nameEl) nameEl.textContent = '-';
+        if (scoreEl) scoreEl.textContent = '-';
+      }
+      if (teams[1]) {
+        teams[1].className = 'team';
+        const nameEl = teams[1].querySelector('.name');
+        const scoreEl = teams[1].querySelector('.score');
+        if (nameEl) nameEl.textContent = '-';
+        if (scoreEl) scoreEl.textContent = '-';
+      }
     }
   });
 }
@@ -718,6 +1028,7 @@ function refreshUI() {
   renderMatchesList();
   renderAllMatchesForUsers();
   renderPlayoffBracket();
+  renderPlayoffPairingsList();
   console.log('refreshUI called');
 }
 
@@ -1234,184 +1545,6 @@ function renderPlayinResults() {
   if (currentDisplay) {
     playinResultsContainer.style.display = currentDisplay;
   }
-}
-
-function renderPlayoffBracket() {
-  // Top 16 lista feltöltése
-  const top16List = document.getElementById('top16-list');
-  if (!top16List) return;
-  
-  const {direct, playin} = getQualified();
-  const playinWinners = getWinners('playin');
-  const top16 = [...direct, ...playinWinners];
-  
-  top16List.innerHTML = '';
-  if (top16.length === 0) {
-    top16List.innerHTML = '<p class="muted">A csoportkör után jelenik meg</p>';
-  } else {
-    top16.forEach((playerId, index) => {
-      const player = getPlayerById(playerId);
-      const playerDiv = document.createElement('div');
-      playerDiv.style.cssText = 'padding: 10px; background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(212,175,55,0.1)); border: 1px solid rgba(0,212,255,0.3); border-radius: 6px;';
-      playerDiv.innerHTML = `<strong style="color: #00d4ff;">${index + 1}.</strong> ${player?.name || 'Ismeretlen'}`;
-      top16List.appendChild(playerDiv);
-    });
-  }
-  
-  // Bracket adatok feltöltése
-  const bracketData = buildBracketStructure();
-  
-  // Nyolcaddöntő feltöltése
-  bracketData.round16.forEach((match, idx) => {
-    fillMatchData(`r16-${idx + 1}`, match);
-  });
-  
-  // Negyeddöntő feltöltése
-  bracketData.quarter.forEach((match, idx) => {
-    fillMatchData(`q-${idx + 1}`, match);
-  });
-  
-  // Elődöntő feltöltése
-  bracketData.semi.forEach((match, idx) => {
-    fillMatchData(`s-${idx + 1}`, match);
-  });
-  
-  // Döntő feltöltése
-  if (bracketData.final.length > 0) {
-    fillMatchData('f-1', bracketData.final[0]);
-  }
-  
-  // Bronzmeccs feltöltése
-  if (bracketData.bronze.length > 0) {
-    fillMatchData('b-1', bracketData.bronze[0]);
-  }
-}
-
-// Meccs adatok kitöltése a HTML struktúrában
-function fillMatchData(matchId, matchData) {
-  const matchEl = document.querySelector(`[data-match="${matchId}"]`);
-  if (!matchEl) return;
-  
-  const homeName = matchData ? getPlayerById(matchData.homeId)?.name || "?" : "-";
-  const awayName = matchData ? getPlayerById(matchData.awayId)?.name || "?" : "-";
-  const homeScore = matchData ? matchData.homeTotal : 0;
-  const awayScore = matchData ? matchData.awayTotal : 0;
-  
-  const winner = homeScore > awayScore ? 'home' : awayScore > homeScore ? 'away' : '';
-  
-  const teams = matchEl.querySelectorAll('.team');
-  if (teams[0]) {
-    teams[0].className = `team ${winner === 'home' ? 'winner' : ''}`;
-    teams[0].querySelector('.name').textContent = homeName;
-    teams[0].querySelector('.score').textContent = homeScore;
-  }
-  if (teams[1]) {
-    teams[1].className = `team ${winner === 'away' ? 'winner' : ''}`;
-    teams[1].querySelector('.name').textContent = awayName;
-    teams[1].querySelector('.score').textContent = awayScore;
-  }
-}
-
-// Bracket struktúra építése automatikus továbbjutással
-function buildBracketStructure() {
-  const structure = {
-    round16: [],
-    quarter: [],
-    semi: [],
-    final: [],
-    bronze: []
-  };
-  
-  // Nyolcaddöntő: Valós meccsek
-  const round16Pairs = getAggregatedGoals('round16');
-  structure.round16 = round16Pairs;
-  
-  // Negyeddöntő: Round16 győzteseiből
-  const round16Winners = [];
-  round16Pairs.forEach(p => {
-    if (p.homeTotal > p.awayTotal) round16Winners.push(p.homeId);
-    else if (p.awayTotal > p.homeTotal) round16Winners.push(p.awayId);
-  });
-  
-  // Ha van valós negyeddöntő meccs, használjuk azt, különben generáljuk
-  const quarterPairs = getAggregatedGoals('quarter');
-  if (quarterPairs.length > 0) {
-    structure.quarter = quarterPairs;
-  } else if (round16Winners.length >= 2) {
-    // Automatikus párosítás: 1v8, 2v7, 3v6, 4v5 alapon
-    for (let i = 0; i < round16Winners.length; i += 2) {
-      if (round16Winners[i + 1]) {
-        structure.quarter.push({
-          homeId: round16Winners[i],
-          awayId: round16Winners[i + 1],
-          homeTotal: 0,
-          awayTotal: 0
-        });
-      }
-    }
-  }
-  
-  // Elődöntő: Quarter győzteseiből
-  const quarterWinners = [];
-  structure.quarter.forEach(p => {
-    if (p.homeTotal > p.awayTotal) quarterWinners.push(p.homeId);
-    else if (p.awayTotal > p.homeTotal) quarterWinners.push(p.awayId);
-  });
-  
-  const semiPairs = getAggregatedGoals('semi');
-  if (semiPairs.length > 0) {
-    structure.semi = semiPairs;
-  } else if (quarterWinners.length >= 2) {
-    for (let i = 0; i < quarterWinners.length; i += 2) {
-      if (quarterWinners[i + 1]) {
-        structure.semi.push({
-          homeId: quarterWinners[i],
-          awayId: quarterWinners[i + 1],
-          homeTotal: 0,
-          awayTotal: 0
-        });
-      }
-    }
-  }
-  
-  // Döntő és Bronzmeccs
-  const semiWinners = [];
-  const semiLosers = [];
-  structure.semi.forEach(p => {
-    if (p.homeTotal > p.awayTotal) {
-      semiWinners.push(p.homeId);
-      semiLosers.push(p.awayId);
-    } else if (p.awayTotal > p.homeTotal) {
-      semiWinners.push(p.awayId);
-      semiLosers.push(p.homeId);
-    }
-  });
-  
-  const finalPairs = getAggregatedGoals('final');
-  if (finalPairs.length > 0) {
-    structure.final = finalPairs;
-  } else if (semiWinners.length >= 2) {
-    structure.final.push({
-      homeId: semiWinners[0],
-      awayId: semiWinners[1],
-      homeTotal: 0,
-      awayTotal: 0
-    });
-  }
-  
-  const bronzePairs = getAggregatedGoals('bronze');
-  if (bronzePairs.length > 0) {
-    structure.bronze = bronzePairs;
-  } else if (semiLosers.length >= 2) {
-    structure.bronze.push({
-      homeId: semiLosers[0],
-      awayId: semiLosers[1],
-      homeTotal: 0,
-      awayTotal: 0
-    });
-  }
-  
-  return structure;
 }
 
 // --- ADMIN PLAYOFF KEZELÉS ---
