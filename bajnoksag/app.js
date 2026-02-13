@@ -677,6 +677,100 @@ function generateMatchOptions(round) {
   return options;
 }
 
+// Helper funkciók: automatikus továbbjutás
+function getMatchById(matchId) {
+  return state.playoffMatches.find(m => m.matchId === matchId);
+}
+
+function hasResult(match) {
+  return !!match && match.homeGoals !== null && match.awayGoals !== null;
+}
+
+function getWinnerName(match) {
+  if (!hasResult(match)) return null;
+  if (match.homeGoals > match.awayGoals) return match.homePlayer;
+  if (match.awayGoals > match.homeGoals) return match.awayPlayer;
+  return null;
+}
+
+function getLoserName(match) {
+  if (!hasResult(match)) return null;
+  if (match.homeGoals > match.awayGoals) return match.awayPlayer;
+  if (match.awayGoals > match.homeGoals) return match.homePlayer;
+  return null;
+}
+
+async function upsertPlayoffMatch(matchId, homePlayer, awayPlayer) {
+  if (!homePlayer || !awayPlayer) return;
+  const existing = getMatchById(matchId);
+  if (existing) {
+    const changed = existing.homePlayer !== homePlayer || existing.awayPlayer !== awayPlayer;
+    if (changed) {
+      await updateDoc(doc(db, 'playoff_matches', existing.id), {
+        homePlayer,
+        awayPlayer,
+        homeGoals: null,
+        awayGoals: null
+      });
+    }
+  } else {
+    await addDoc(playoffMatchesCol, {
+      matchId,
+      homePlayer,
+      awayPlayer,
+      homeGoals: null,
+      awayGoals: null,
+      createdAt: serverTimestamp()
+    });
+  }
+}
+
+async function autoAdvancePlayoff() {
+  // R16 -> QF
+  const qMap = [
+    { id: 'q-1', a: 'r16-1', b: 'r16-2' },
+    { id: 'q-2', a: 'r16-3', b: 'r16-4' },
+    { id: 'q-3', a: 'r16-5', b: 'r16-6' },
+    { id: 'q-4', a: 'r16-7', b: 'r16-8' }
+  ];
+
+  for (const map of qMap) {
+    const w1 = getWinnerName(getMatchById(map.a));
+    const w2 = getWinnerName(getMatchById(map.b));
+    if (w1 && w2) {
+      await upsertPlayoffMatch(map.id, w1, w2);
+    }
+  }
+
+  // QF -> SF
+  const sMap = [
+    { id: 's-1', a: 'q-1', b: 'q-2' },
+    { id: 's-2', a: 'q-3', b: 'q-4' }
+  ];
+
+  for (const map of sMap) {
+    const w1 = getWinnerName(getMatchById(map.a));
+    const w2 = getWinnerName(getMatchById(map.b));
+    if (w1 && w2) {
+      await upsertPlayoffMatch(map.id, w1, w2);
+    }
+  }
+
+  // SF -> Final
+  const sf1Winner = getWinnerName(getMatchById('s-1'));
+  const sf2Winner = getWinnerName(getMatchById('s-2'));
+  if (sf1Winner && sf2Winner) {
+    await upsertPlayoffMatch('final', sf1Winner, sf2Winner);
+  }
+
+  // SF losers -> Bronze
+  const sf1Loser = getLoserName(getMatchById('s-1'));
+  const sf2Loser = getLoserName(getMatchById('s-2'));
+  if (sf1Loser && sf2Loser) {
+    await upsertPlayoffMatch('bronze', sf1Loser, sf2Loser);
+  }
+}
+
 // 1. PÁROSÍTÁSOK BEÁLLÍTÁSA
 const pairingRoundSelect = document.getElementById('pairingRoundSelect');
 const pairingMatchSelect = document.getElementById('pairingMatchSelect');
@@ -826,6 +920,12 @@ if (addResultBtn) {
         homeGoals,
         awayGoals
       });
+
+      // Frissítjük lokálisan, hogy az auto-advance rögtön számolhasson
+      match.homeGoals = homeGoals;
+      match.awayGoals = awayGoals;
+
+      await autoAdvancePlayoff();
       
       resultMessage.textContent = `✅ Eredmény rögzítve: ${match.homePlayer} ${homeGoals}-${awayGoals} ${match.awayPlayer}`;
       resultRoundSelect.value = '';
@@ -995,6 +1095,10 @@ function renderPlayoffBracket() {
       }
     }
   });
+
+  if (adminStatus.isMaster) {
+    autoAdvancePlayoff();
+  }
 }
 
 // --- LISTENERS ---
