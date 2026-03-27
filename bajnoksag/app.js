@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
-  getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDocs, updateDoc 
+  getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDocs, updateDoc, getDoc, setDoc 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -21,6 +21,8 @@ const playersCol = collection(db, "players");
 const matchesCol = collection(db, "matches");
 const playoffMatchesCol = collection(db, "playoff_matches");
 const archivesCol = collection(db, "archives");
+const playinPairsCol = collection(db, "playin_pairs");
+const configDocRef = doc(db, "meta", "championship_config");
 
 const ARCHIVE_KEY = "hrl_archives";
 
@@ -29,6 +31,13 @@ let state = {
   players: [],        // játékosok leagueId-val
   matches: [],        // liga meccsek
   playoffMatches: [], // top 16 playoff meccsek
+  groups: [],
+  playinPairs: [],
+  config: {
+    groupCount: 4,
+    qualifiersPerGroup: 4,
+    usePlayIn: false
+  },
   archives: []
 };
 let unsub = [];
@@ -72,6 +81,100 @@ const adminLoginMsg = document.getElementById("adminLoginMsg");
 const adminLoggedOut = document.getElementById("adminLoggedOut");
 const adminLoggedIn = document.getElementById("adminLoggedIn");
 const adminStatusText = document.getElementById("adminStatusText");
+
+// --- ARCHIVE ELEMENTS ---
+const archiveNameInput = document.getElementById("archiveNameInput");
+const saveArchiveBtn = document.getElementById("saveArchiveBtn");
+const archiveMessage = document.getElementById("archiveMessage");
+const configSummary = document.getElementById("configSummary");
+const groupCountSelect = document.getElementById("groupCountSelect");
+const qualifiersPerGroupSelect = document.getElementById("qualifiersPerGroupSelect");
+const usePlayInSelect = document.getElementById("usePlayInSelect");
+const setupMessage = document.getElementById("setupMessage");
+const playinPairSetup = document.getElementById("playinPairSetup");
+const playoffRoundSelect = document.getElementById("playoffRoundSelect");
+const playoffHomeSelect = document.getElementById("playoffHomeSelect");
+const playoffAwaySelect = document.getElementById("playoffAwaySelect");
+const playoffHomeGoals = document.getElementById("playoffHomeGoals");
+const playoffAwayGoals = document.getElementById("playoffAwayGoals");
+const playoffMatchMessage = document.getElementById("playoffMatchMessage");
+const addPlayoffMatchBtn = document.getElementById("addPlayoffMatchBtn");
+
+if (saveArchiveBtn) {
+  saveArchiveBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    saveArchive();
+  });
+}
+
+function getLeagueLetters() {
+  return ["A", "B", "C", "D"];
+}
+
+function readConfigFromControls() {
+  const groupCount = Math.min(4, Math.max(2, parseInt(groupCountSelect?.value || "4", 10)));
+  const qualifiersPerGroup = Math.min(8, Math.max(1, parseInt(qualifiersPerGroupSelect?.value || "4", 10)));
+  const usePlayIn = (usePlayInSelect?.value || "no") === "yes";
+  return { groupCount, qualifiersPerGroup, usePlayIn };
+}
+
+function applyConfigToControls() {
+  if (groupCountSelect) groupCountSelect.value = String(state.config.groupCount || 4);
+  if (qualifiersPerGroupSelect) qualifiersPerGroupSelect.value = String(state.config.qualifiersPerGroup || 4);
+  if (usePlayInSelect) usePlayInSelect.value = state.config.usePlayIn ? "yes" : "no";
+}
+
+function updateConfigSummary() {
+  if (!configSummary) return;
+  const leagueCount = state.leagues.length;
+  if (leagueCount === 0) {
+    configSummary.textContent = "Még nincs aktív bajnokság. Master Admin indíthat újat a Liga kezelés nézetben.";
+    return;
+  }
+  const playInText = state.config.usePlayIn ? "Play-in: van" : "Play-in: nincs";
+  configSummary.textContent = `${leagueCount} csoportos bajnokság aktív • Továbbjutó/csoport: ${state.config.qualifiersPerGroup} • ${playInText}`;
+}
+
+function applyLeagueSectionVisibility() {
+  const maxVisible = state.config.groupCount || 4;
+  getLeagueLetters().forEach((letter, index) => {
+    const section = document.querySelector(`.league-${letter.toLowerCase()}-section`);
+    if (!section) return;
+    if (index >= maxVisible) {
+      section.style.display = "none";
+    }
+  });
+}
+
+async function loadChampionshipConfig() {
+  try {
+    const snap = await getDoc(configDocRef);
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      state.config = {
+        groupCount: Math.min(4, Math.max(2, Number(data.groupCount || 4))),
+        qualifiersPerGroup: Math.min(8, Math.max(1, Number(data.qualifiersPerGroup || 4))),
+        usePlayIn: !!data.usePlayIn
+      };
+      localStorage.setItem("ifi2_champ_config", JSON.stringify(state.config));
+    } else {
+      const local = JSON.parse(localStorage.getItem("ifi2_champ_config") || "null");
+      if (local) {
+        state.config = {
+          groupCount: Math.min(4, Math.max(2, Number(local.groupCount || 4))),
+          qualifiersPerGroup: Math.min(8, Math.max(1, Number(local.qualifiersPerGroup || 4))),
+          usePlayIn: !!local.usePlayIn
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("Config betöltési hiba, alapértékeket használunk:", err);
+  }
+
+  applyConfigToControls();
+  applyLeagueSectionVisibility();
+  updateConfigSummary();
+}
 
 async function hashString(str) {
   const encoder = new TextEncoder();
@@ -158,8 +261,11 @@ function updateAdminUI() {
     if (adminStatus.leagueDAdmin) statusParts.push("Liga D");
     adminStatusText.textContent = statusParts.length > 0 ? `✓ ${statusParts.join(", ")}` : "";
   }
+
+  applyLeagueSectionVisibility();
 }
 updateAdminUI();
+loadChampionshipConfig();
 
 // --- HAMBURGER MENÜ KEZELÉS ---
 const hamburgerBtn = document.getElementById('hamburgerBtnBaj');
@@ -206,6 +312,8 @@ if (initLeaguesBtn) {
       alert('Csak a Master Admin inicializálhatja a ligákat!');
       return;
     }
+
+    const cfg = readConfigFromControls();
     
     // Ellenőrizzük, hogy már léteznek-e ligák
     if (state.leagues.length > 0) {
@@ -216,19 +324,36 @@ if (initLeaguesBtn) {
       const leaguesSnapshot = await getDocs(leaguesCol);
       const playersSnapshot = await getDocs(playersCol);
       const matchesSnapshot = await getDocs(matchesCol);
+      const playoffSnapshot = await getDocs(playoffMatchesCol);
       
       for (const doc of leaguesSnapshot.docs) await deleteDoc(doc.ref);
       for (const doc of playersSnapshot.docs) await deleteDoc(doc.ref);
       for (const doc of matchesSnapshot.docs) await deleteDoc(doc.ref);
+      for (const doc of playoffSnapshot.docs) await deleteDoc(doc.ref);
     }
     
-    // Létrehozzuk a 4 ligát
+    // Létrehozzuk a beállított számú ligát
     try {
-      await addDoc(leaguesCol, { name: 'Liga A', order: 1, createdAt: serverTimestamp() });
-      await addDoc(leaguesCol, { name: 'Liga B', order: 2, createdAt: serverTimestamp() });
-      await addDoc(leaguesCol, { name: 'Liga C', order: 3, createdAt: serverTimestamp() });
-      await addDoc(leaguesCol, { name: 'Liga D', order: 4, createdAt: serverTimestamp() });
-      alert('✅ Ligák sikeresen létrehozva!');
+      const letters = getLeagueLetters();
+      for (let i = 0; i < cfg.groupCount; i++) {
+        await addDoc(leaguesCol, { name: `Liga ${letters[i]}`, order: i + 1, createdAt: serverTimestamp() });
+      }
+
+      state.config = cfg;
+      await setDoc(configDocRef, {
+        groupCount: cfg.groupCount,
+        qualifiersPerGroup: cfg.qualifiersPerGroup,
+        usePlayIn: cfg.usePlayIn,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      localStorage.setItem("ifi2_champ_config", JSON.stringify(cfg));
+
+      if (setupMessage) {
+        setupMessage.textContent = `✅ Bajnokság elindítva (${cfg.groupCount} csoport, ${cfg.qualifiersPerGroup} továbbjutó/csoport, play-in: ${cfg.usePlayIn ? 'igen' : 'nem'})`;
+      }
+      updateConfigSummary();
+      applyLeagueSectionVisibility();
+      alert('✅ Bajnokság sikeresen elindítva a megadott beállításokkal!');
     } catch (error) {
       console.error('Hiba a ligák létrehozásakor:', error);
       alert('❌ Hiba történt: ' + error.message);
@@ -1133,12 +1258,15 @@ function refreshUI() {
   renderAllMatchesForUsers();
   renderPlayoffBracket();
   renderPlayoffPairingsList();
+  updateConfigSummary();
+  applyLeagueSectionVisibility();
   console.log('refreshUI called');
 }
 
 function refreshUIFast() {
   renderLeagueTables();
   renderAllMatchesForUsers();
+  updateConfigSummary();
   console.log('refreshUIFast called');
 }
 
@@ -1156,6 +1284,7 @@ function renderLeagueTables() {
   
   container.innerHTML = sortedLeagues.map(league => {
     const players = state.players.filter(p => p.leagueId === league.id);
+    const qualifiers = Math.min(state.config.qualifiersPerGroup || 4, players.length || 0);
     
     // Számítsuk ki az állást (egyelőre csak játékosok száma, később meccsek alapján)
     const standings = players.map(player => {
@@ -1221,8 +1350,8 @@ function renderLeagueTables() {
               ${standings.map((st, idx) => {
                 const adjustmentDisplay = st.adjustment !== 0 ? ` <small style="color: ${st.adjustment > 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">(${st.adjustment > 0 ? '+' : ''}${st.adjustment})</small>` : '';
                 return `
-                <tr style="${idx < 4 ? 'background: rgba(212,175,55,0.1); border-left: 3px solid #d4af37;' : ''}">
-                  <td style="font-weight: 700; color: ${idx < 4 ? '#d4af37' : '#9ca3af'};">${idx + 1}</td>
+                <tr style="${idx < qualifiers ? 'background: rgba(212,175,55,0.1); border-left: 3px solid #d4af37;' : ''}">
+                  <td style="font-weight: 700; color: ${idx < qualifiers ? '#d4af37' : '#9ca3af'};">${idx + 1}</td>
                   <td style="font-weight: 600;">${st.name}</td>
                   <td>${st.played}</td>
                   <td>${st.wins}</td>
@@ -1236,7 +1365,7 @@ function renderLeagueTables() {
               `}).join('')}
             </tbody>
           </table>
-          ${standings.length >= 4 ? '<p class="muted" style="margin-top: 12px; font-size: 12px;">🏆 Az első 4 helyezett továbbjut a Top 16 playoffba</p>' : ''}
+          ${qualifiers > 0 ? `<p class="muted" style="margin-top: 12px; font-size: 12px;">🏆 Az első ${qualifiers} helyezett továbbjut csoportonként.</p>` : ''}
         `}
       </div>
     `;
@@ -1248,6 +1377,13 @@ const groupNameInput = document.getElementById("groupNameInput");
 const addGroupBtn = document.getElementById("addGroupBtn");
 const groupMessage = document.getElementById("groupMessage");
 const groupList = document.getElementById("groupList");
+const addPlayerBtn = document.getElementById("addPlayerBtn");
+const playerNameInput = document.getElementById("playerNameInput");
+const playerGroupSelect = document.getElementById("playerGroupSelect");
+const playerMessage = document.getElementById("playerMessage");
+const playersTableBody = document.getElementById("playersTableBody");
+const playerCountInfo = document.getElementById("playerCountInfo");
+const groupsCol = collection(db, "groups");
 
 if (addGroupBtn) addGroupBtn.addEventListener("click", async () => {
   if (!isAdmin) {
@@ -1569,11 +1705,52 @@ const playoffPlayinResults = document.getElementById("playoff-playin-results");
 function getQualified() {
   const direct = [];
   const playin = [];
-  state.groups.forEach(g => {
-    const standing = computeStandingsForGroup(g.id);
-    if (standing[0]) direct.push(standing[0].player.id);
-    if (standing[1]) playin.push(standing[1].player.id);
-    if (standing[2]) playin.push(standing[2].player.id);
+  const qualifiersPerGroup = Math.max(1, state.config.qualifiersPerGroup || 4);
+  const usePlayIn = !!state.config.usePlayIn;
+
+  state.leagues.forEach(league => {
+    const leaguePlayers = state.players.filter(p => p.leagueId === league.id);
+    const standings = leaguePlayers.map(player => {
+      const playerMatches = state.matches.filter(m =>
+        m.leagueId === league.id && (m.homePlayerId === player.id || m.awayPlayerId === player.id)
+      );
+
+      let wins = 0;
+      let draws = 0;
+      let losses = 0;
+      let goalsFor = 0;
+      let goalsAgainst = 0;
+
+      playerMatches.forEach(match => {
+        const isHome = match.homePlayerId === player.id;
+        const scored = isHome ? (match.homeGoals || 0) : (match.awayGoals || 0);
+        const conceded = isHome ? (match.awayGoals || 0) : (match.homeGoals || 0);
+
+        goalsFor += scored;
+        goalsAgainst += conceded;
+
+        if (scored > conceded) wins++;
+        else if (scored === conceded) draws++;
+        else losses++;
+      });
+
+      const matchPoints = wins * 3 + draws;
+      const adjustment = player.adjustment || 0;
+      const points = matchPoints + adjustment;
+      const gd = goalsFor - goalsAgainst;
+
+      return { playerId: player.id, points, gd, goalsFor };
+    }).sort((a, b) => b.points - a.points || b.gd - a.gd || b.goalsFor - a.goalsFor);
+
+    const qualifiedCount = Math.min(qualifiersPerGroup, standings.length);
+    if (!usePlayIn || qualifiedCount <= 1) {
+      standings.slice(0, qualifiedCount).forEach(row => direct.push(row.playerId));
+      return;
+    }
+
+    const directCount = Math.max(1, qualifiedCount - 1);
+    standings.slice(0, directCount).forEach(row => direct.push(row.playerId));
+    standings.slice(directCount, qualifiedCount).forEach(row => playin.push(row.playerId));
   });
   return { direct, playin };
 }
@@ -1720,11 +1897,6 @@ function renderAdminPlayoffMatches() {
         };
     });
 }
-
-
-const archiveNameInput = document.getElementById("archiveNameInput");
-const saveArchiveBtn = document.getElementById("saveArchiveBtn");
-const archiveMessage = document.getElementById("archiveMessage");
 
 function renderPlayoffAdmin() {
   if (!playinPairSetup) return;
@@ -1877,60 +2049,6 @@ if (addPlayoffMatchBtn) {
     };
 }
 
-// --- BAJNOKSÁG ARCHÍV MENTÉS ---
-function deriveChampion() {
-  const final = state.playoffMatches.find(m => m.round === "final");
-  if (!final) return null;
-  const home = getPlayerById(final.homeId);
-  const away = getPlayerById(final.awayId);
-  if (final.homeGoals === final.awayGoals) return null;
-  const winner = final.homeGoals > final.awayGoals ? home : away;
-  const loser = final.homeGoals > final.awayGoals ? away : home;
-  return {
-    winnerId: winner?.id,
-    winnerName: winner?.name || "-",
-    runnerUpName: loser?.name || "-",
-    finalScore: `${final.homeGoals}:${final.awayGoals}`,
-    pairing: `${home?.name || "?"} vs ${away?.name || "?"}`
-  };
-}
-
-async function saveArchive() {
-  if (!adminStatus.isMaster) {
-    if (archiveMessage) archiveMessage.textContent = "Csak Master Admin menthet archívumot";
-    return;
-  }
-  if (archiveMessage) archiveMessage.textContent = "Mentés...";
-
-  const name = (archiveNameInput?.value || "").trim() || `HRL Bajnokság ${new Date().toLocaleDateString('hu-HU')}`;
-  const champion = deriveChampion();
-  const payload = {
-    name,
-    finishedAt: serverTimestamp(),
-    champion,
-    leagues: state.leagues,
-    players: state.players,
-    matches: state.matches,
-    playoffMatches: state.playoffMatches
-  };
-
-  try {
-    await addDoc(archivesCol, payload);
-    if (archiveNameInput) archiveNameInput.value = "";
-    if (archiveMessage) {
-      archiveMessage.textContent = "✅ Bajnokság elmentve az archívumba!";
-      archiveMessage.style.color = "#10b981";
-    }
-    alert("✅ Bajnokság sikeresen elmentve az archívumba!");
-  } catch (error) {
-    console.error("Archív mentési hiba:", error);
-    if (archiveMessage) {
-      archiveMessage.textContent = `❌ Hiba: ${error.message}`;
-      archiveMessage.style.color = "#ef4444";
-    }
-  }
-}
-
 function updateArchiveDisplay() {
   renderArchiveList(); // Mindig frissítse, nem csak ha aktív a view
 }
@@ -2005,6 +2123,96 @@ if (togglePlayinBtn) {
     
     togglePlayinBtn.innerHTML = `<span id="togglePlayinIcon">${isHidden ? "▲" : "▼"}</span> Play-in meccsek ${isHidden ? "elrejtése" : "megjelenítése"}`;
   });
+}
+
+// --- BAJNOKSÁG ARCHÍV MENTÉS ---
+function deriveChampion() {
+  const final = state.playoffMatches.find(m => m.matchId === "final");
+  if (!final) return null;
+  if (!hasResult(final)) return null;
+  if (final.homeGoals === final.awayGoals) return null;
+  
+  const winner = final.homeGoals > final.awayGoals ? final.homePlayer : final.awayPlayer;
+  const loser = final.homeGoals > final.awayGoals ? final.awayPlayer : final.homePlayer;
+  
+  return {
+    winnerName: winner || "-",
+    runnerUpName: loser || "-",
+    finalScore: `${final.homeGoals}:${final.awayGoals}`,
+    pairing: `${final.homePlayer || "?"} vs ${final.awayPlayer || "?"}`
+  };
+}
+
+async function saveArchive() {
+  if (!adminStatus.isMaster) {
+    if (archiveMessage) archiveMessage.textContent = "Csak Master Admin menthet archívumot";
+    alert("Csak Master Admin jogosultsággal lehet archívumba menteni.");
+    return;
+  }
+  if (archiveMessage) archiveMessage.textContent = "Mentés...";
+
+  const name = (archiveNameInput?.value || "").trim() || `HRL Bajnokság ${new Date().toLocaleDateString('hu-HU')}`;
+  const champion = deriveChampion();
+  const payload = {
+    name,
+    createdAt: serverTimestamp(),
+    finishedAt: serverTimestamp(),
+    config: state.config,
+    champion,
+    groups: state.leagues,
+    leagues: state.leagues,
+    players: state.players,
+    matches: state.matches,
+    playoffMatches: state.playoffMatches
+  };
+
+  const localPayload = {
+    id: `local_${Date.now()}`,
+    name,
+    createdAtIso: new Date().toISOString(),
+    finishedAtIso: new Date().toISOString(),
+    config: state.config,
+    champion,
+    groups: state.leagues,
+    leagues: state.leagues,
+    players: state.players,
+    matches: state.matches,
+    playoffMatches: state.playoffMatches
+  };
+
+  try {
+    await addDoc(archivesCol, payload);
+    if (archiveNameInput) archiveNameInput.value = "";
+    if (archiveMessage) {
+      archiveMessage.textContent = "✅ Bajnokság elmentve az archívumba!";
+      archiveMessage.style.color = "#10b981";
+    }
+    alert("✅ Bajnokság sikeresen elmentve az archívumba!");
+  } catch (error) {
+    console.error("Archív mentési hiba:", error);
+    try {
+      const saved = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || "[]");
+      saved.unshift(localPayload);
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(saved));
+      if (archiveNameInput) archiveNameInput.value = "";
+      if (archiveMessage) {
+        archiveMessage.textContent = "⚠️ Felhős mentés nem sikerült, helyi archívumba mentve.";
+        archiveMessage.style.color = "#f59e0b";
+      }
+      alert("⚠️ A felhős mentés hibázott, de helyben elmentettem az archívumot.");
+      return;
+    } catch (localErr) {
+      console.error("Helyi archív mentési hiba:", localErr);
+    }
+    if (archiveMessage) {
+      archiveMessage.textContent = `❌ Hiba: ${error.message}`;
+      archiveMessage.style.color = "#ef4444";
+    }
+  }
+}
+
+if (saveArchiveBtn) {
+  saveArchiveBtn.onclick = saveArchive;
 }
 
 } // initApp() vége
