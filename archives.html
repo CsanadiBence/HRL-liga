@@ -284,8 +284,27 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const archivesCol = collection(db, "archives");
+        const ARCHIVE_KEY = 'hrl_archives';
 
         let currentArchives = [];
+
+        function parseLocalArchives() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+                if (!Array.isArray(parsed)) return [];
+                return parsed.map(item => ({ ...item, source: 'local' }));
+            } catch {
+                return [];
+            }
+        }
+
+        function getArchiveDate(archive) {
+            if (archive.finishedAt?.toDate) return archive.finishedAt.toDate();
+            if (archive.createdAt?.toDate) return archive.createdAt.toDate();
+            if (archive.finishedAtIso) return new Date(archive.finishedAtIso);
+            if (archive.createdAtIso) return new Date(archive.createdAtIso);
+            return new Date(0);
+        }
 
         // Archives oldal specifikus betöltés
         document.addEventListener('DOMContentLoaded', function() {
@@ -297,8 +316,20 @@
             if (!listEl) return;
 
             // Real-time listener
-            onSnapshot(query(archivesCol, orderBy("finishedAt", "desc")), (snapshot) => {
-                currentArchives = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            onSnapshot(archivesCol, (snapshot) => {
+                const cloudArchives = snapshot.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .sort((a, b) => {
+                        const aDate = getArchiveDate(a);
+                        const bDate = getArchiveDate(b);
+                        return bDate - aDate;
+                    });
+
+                const localArchives = parseLocalArchives();
+                const cloudIds = new Set(cloudArchives.map(a => a.id));
+                const localOnly = localArchives.filter(a => !cloudIds.has(a.id));
+
+                currentArchives = [...cloudArchives, ...localOnly].sort((a, b) => getArchiveDate(b) - getArchiveDate(a));
 
                 if (currentArchives.length === 0) {
                     listEl.innerHTML = '<p class="muted" style="text-align: center; grid-column: 1/-1; padding: 40px;">Még nincs mentett bajnokság.</p>';
@@ -309,7 +340,8 @@
 
                 listEl.innerHTML = currentArchives.map(archive => {
                     const name = archive.name || 'Ismeretlen bajnokság';
-                    const finishedAt = archive.finishedAt?.toDate ? archive.finishedAt.toDate().toLocaleDateString('hu-HU') : '-';
+                    const archiveDate = getArchiveDate(archive);
+                    const finishedAt = archiveDate ? archiveDate.toLocaleDateString('hu-HU') : '-';
                     const champ = archive.champion?.winnerName || '-';
                     const pairing = archive.champion?.pairing || 'Nincs döntő rögzítve';
                     const score = archive.champion?.finalScore ? ` (${archive.champion.finalScore})` : '';
@@ -338,6 +370,16 @@
         // Archív törlése
         window.deleteArchive = async function(id, name) {
             if (!confirm(`Biztosan törlöd ezt a bajnokságot?\n\n"${name}"`)) return;
+
+            const localArchive = currentArchives.find(a => a.id === id && a.source === 'local');
+            if (localArchive) {
+                const saved = parseLocalArchives().filter(a => a.id !== id).map(({ source, ...rest }) => rest);
+                localStorage.setItem(ARCHIVE_KEY, JSON.stringify(saved));
+                currentArchives = currentArchives.filter(a => a.id !== id);
+                window.location.reload();
+                alert('Helyi bajnokság törölve!');
+                return;
+            }
 
             try {
                 await deleteDoc(doc(db, 'archives', id));
@@ -374,7 +416,7 @@
             `;
 
             // Csoportok és táblázatok számolása
-            const groups = archive.groups || [];
+            const groups = archive.groups || archive.leagues || [];
             const matches = archive.matches || [];
             const players = archive.players || [];
             
@@ -385,25 +427,30 @@
                 html += `<div style="background: rgba(15,15,30,0.6); border: 2px solid rgba(0,212,255,0.3); border-radius: 15px; padding: 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.3);">`;
                 html += `<h4 style="color: #00d4ff; margin-bottom: 20px; font-size: 1.4rem; font-weight: 700;">${group.name}</h4>`;
                 
-                // Kiszámoljuk a standings-t
-                const groupPlayers = players.filter(p => p.groupId === group.id);
-                const groupMatches = matches.filter(m => m.groupId === group.id);
+                // Kiszámoljuk a standings-t (régi groupId és új leagueId séma támogatással)
+                const groupPlayers = players.filter(p => p.groupId === group.id || p.leagueId === group.id);
+                const groupMatches = matches.filter(m => m.groupId === group.id || m.leagueId === group.id);
                 
                 const standings = groupPlayers.map(player => {
                     let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0;
                     
                     groupMatches.forEach(match => {
-                        if (match.homeId === player.id) {
-                            goalsFor += match.homeGoals;
-                            goalsAgainst += match.awayGoals;
-                            if (match.homeGoals > match.awayGoals) wins++;
-                            else if (match.homeGoals === match.awayGoals) draws++;
+                        const homePlayerId = match.homeId || match.homePlayerId;
+                        const awayPlayerId = match.awayId || match.awayPlayerId;
+                        const homeGoals = Number(match.homeGoals || 0);
+                        const awayGoals = Number(match.awayGoals || 0);
+
+                        if (homePlayerId === player.id) {
+                            goalsFor += homeGoals;
+                            goalsAgainst += awayGoals;
+                            if (homeGoals > awayGoals) wins++;
+                            else if (homeGoals === awayGoals) draws++;
                             else losses++;
-                        } else if (match.awayId === player.id) {
-                            goalsFor += match.awayGoals;
-                            goalsAgainst += match.homeGoals;
-                            if (match.awayGoals > match.homeGoals) wins++;
-                            else if (match.awayGoals === match.homeGoals) draws++;
+                        } else if (awayPlayerId === player.id) {
+                            goalsFor += awayGoals;
+                            goalsAgainst += homeGoals;
+                            if (awayGoals > homeGoals) wins++;
+                            else if (awayGoals === homeGoals) draws++;
                             else losses++;
                         }
                     });
@@ -444,12 +491,13 @@
                 `;
                 
                 standings.forEach((team, idx) => {
-                    const rowColor = idx === 0 ? 'rgba(255,215,0,0.15)' : idx === 1 ? 'rgba(192,192,192,0.1)' : 'rgba(255,255,255,0.02)';
+                    const rowColor = idx < 4 ? 'rgba(16,185,129,0.10)' : 'rgba(255,255,255,0.02)';
                     const trophy = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : '';
+                    const qualifiedTag = idx < 4 ? ' <small style="color:#10b981; font-weight:700;">(Továbbjutó)</small>' : '';
                     html += `
                         <tr style="background: ${rowColor}; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;">
                             <td style="padding: 14px 8px; text-align: left; color: #00d4ff; font-weight: 700; font-size: 1.1rem;">${idx + 1}</td>
-                            <td style="padding: 14px; text-align: left; font-weight: 600; font-size: 1.05rem; color: #fff;">${trophy}${team.name}</td>
+                            <td style="padding: 14px; text-align: left; font-weight: 600; font-size: 1.05rem; color: #fff;">${trophy}${team.name}${qualifiedTag}</td>
                             <td style="padding: 14px 8px; color: #ccc;">${team.played}</td>
                             <td style="padding: 14px 8px; color: #4ade80; font-weight: 600;">${team.wins}</td>
                             <td style="padding: 14px 8px; color: #fbbf24; font-weight: 600;">${team.draws}</td>
@@ -465,6 +513,7 @@
                 html += `
                             </tbody>
                         </table>
+                        <p style="margin-top: 12px; color: #10b981; font-weight: 700;">✅ Innen az első 4 helyezett jutott tovább a playoffba.</p>
                     </div>
                 `;
                 
@@ -474,29 +523,48 @@
             html += `</div>`; // Close groups grid
 
             // Playoff bracket
-            const playoffMatches = archive.playoffMatches || [];
-            if (playoffMatches.length > 0) {
+            const playoffMatches = (archive.playoffMatches || []).map(m => {
+                let normalizedRound = m.round;
+                if (!normalizedRound && m.matchId) {
+                    if (m.matchId.startsWith('r16-')) normalizedRound = 'r16';
+                    else if (m.matchId.startsWith('q-')) normalizedRound = 'quarter';
+                    else if (m.matchId.startsWith('s-')) normalizedRound = 'semi';
+                    else if (m.matchId === 'final') normalizedRound = 'final';
+                    else if (m.matchId === 'bronze') normalizedRound = 'bronze';
+                }
+                return { ...m, normalizedRound };
+            });
+
+            const hasAnyPlayoff = playoffMatches.some(m => ['r16', 'quarter', 'semi', 'bronze', 'final'].includes(m.normalizedRound));
+            if (hasAnyPlayoff) {
                 html += `<h3 style="margin-bottom: 30px; color: #00d4ff; font-size: 1.8rem; border-bottom: 2px solid rgba(0,212,255,0.3); padding-bottom: 15px;">🏅 Playoff Bracket</h3>`;
                 html += `<div style="background: rgba(15,15,30,0.6); border: 2px solid rgba(0,212,255,0.3); border-radius: 15px; padding: 30px; margin-bottom: 40px; box-shadow: 0 5px 20px rgba(0,0,0,0.3);">`;
                 
                 const rounds = {
+                    'r16': '🔥 Nyolcaddöntő',
+                    'quarter': '⚔️ Negyeddöntők',
                     'semi': '⚡ Elődöntők',
+                    'bronze': '🥉 Bronzmeccs',
                     'final': '🏆 Döntő'
                 };
 
-                ['semi', 'final'].forEach(roundKey => {
-                    const roundMatches = playoffMatches.filter(m => m.round === roundKey);
+                ['r16', 'quarter', 'semi', 'bronze', 'final'].forEach(roundKey => {
+                    const roundMatches = playoffMatches.filter(m => m.normalizedRound === roundKey);
                     if (roundMatches.length > 0) {
                         html += `<div style="margin-bottom: 25px;"><h4 style="color: #00d4ff; margin-bottom: 15px; font-size: 1.3rem;">${rounds[roundKey]}</h4>`;
                         roundMatches.forEach(match => {
-                            const home = archive.players.find(p => p.id === match.homeId);
-                            const away = archive.players.find(p => p.id === match.awayId);
-                            const winner = match.homeGoals > match.awayGoals ? 'home' : 'away';
+                            const home = archive.players.find(p => p.id === (match.homeId || match.homePlayerId));
+                            const away = archive.players.find(p => p.id === (match.awayId || match.awayPlayerId));
+                            const homeName = home?.name || match.homePlayer || '?';
+                            const awayName = away?.name || match.awayPlayer || '?';
+                            const homeGoals = Number(match.homeGoals || 0);
+                            const awayGoals = Number(match.awayGoals || 0);
+                            const winner = homeGoals === awayGoals ? 'draw' : (homeGoals > awayGoals ? 'home' : 'away');
                             html += `
                                 <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 2px solid rgba(0,212,255,0.1);">
-                                    <span style="flex: 1; font-size: 1.1rem; color: ${winner === 'home' ? '#4ade80' : '#ccc'}; font-weight: ${winner === 'home' ? '700' : '400'};">${home?.name || '?'}</span>
-                                    <span style="color: gold; font-weight: 900; font-size: 1.8rem; padding: 0 40px; text-shadow: 0 2px 10px rgba(255,215,0,0.3);">${match.homeGoals} : ${match.awayGoals}</span>
-                                    <span style="flex: 1; text-align: right; font-size: 1.1rem; color: ${winner === 'away' ? '#4ade80' : '#ccc'}; font-weight: ${winner === 'away' ? '700' : '400'};">${away?.name || '?'}</span>
+                                    <span style="flex: 1; font-size: 1.1rem; color: ${winner === 'home' ? '#4ade80' : '#ccc'}; font-weight: ${winner === 'home' ? '700' : '400'};">${homeName}</span>
+                                    <span style="color: gold; font-weight: 900; font-size: 1.8rem; padding: 0 40px; text-shadow: 0 2px 10px rgba(255,215,0,0.3);">${homeGoals} : ${awayGoals}</span>
+                                    <span style="flex: 1; text-align: right; font-size: 1.1rem; color: ${winner === 'away' ? '#4ade80' : '#ccc'}; font-weight: ${winner === 'away' ? '700' : '400'};">${awayName}</span>
                                 </div>
                             `;
                         });
