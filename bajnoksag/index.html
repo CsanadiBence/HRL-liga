@@ -63,7 +63,7 @@
     <section id="view-leagues" class="view active">
       <div class="card">
         <h2>HRL Ligák - 2025/2026 Szezon</h2>
-        <p class="muted">4 liga rendszer - Mindenki játszik mindenkivel oda-vissza. Az első 4 helyezett minden ligából továbbjut a Top 16-ba.</p>
+        <p class="muted" id="configSummary">Még nincs aktív bajnokság. Master Admin indíthat újat a Liga kezelés nézetben.</p>
       </div>
       <div id="leagues-tables-container"></div>
     </section>
@@ -84,9 +84,40 @@
       <div class="card master-only">
         <div class="card-header-row">
           <h2>Liga kezelés</h2>
-          <button id="initLeaguesBtn">Ligák inicializálása</button>
+          <button id="initLeaguesBtn">Bajnokság indítása</button>
         </div>
-        <p class="muted">4 liga létrehozása (csak Master Admin)</p>
+        <p class="muted">Bajnokság indítása testreszabott paraméterekkel (csak Master Admin)</p>
+        <div class="form-row" style="margin-top: 12px;">
+          <div class="form-field">
+            <label>Csoportok / táblák száma</label>
+            <select id="groupCountSelect">
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4" selected>4</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Továbbjutók csoportonként</label>
+            <select id="qualifiersPerGroupSelect">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4" selected>4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Play-in</label>
+            <select id="usePlayInSelect">
+              <option value="no" selected>Nincs</option>
+              <option value="yes">Van</option>
+            </select>
+          </div>
+        </div>
+        <p id="setupMessage" class="muted" style="margin-top: 8px;"></p>
       </div>
 
       <div id="league-management-container">
