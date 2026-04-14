@@ -112,7 +112,7 @@ function getLeagueLetters() {
 }
 
 function readConfigFromControls() {
-  const groupCount = Math.min(4, Math.max(2, parseInt(groupCountSelect?.value || "4", 10)));
+  const groupCount = Math.min(4, Math.max(1, parseInt(groupCountSelect?.value || "4", 10)));
   const qualifiersPerGroup = Math.min(8, Math.max(1, parseInt(qualifiersPerGroupSelect?.value || "4", 10)));
   const usePlayIn = (usePlayInSelect?.value || "no") === "yes";
   return { groupCount, qualifiersPerGroup, usePlayIn };
@@ -152,7 +152,7 @@ async function loadChampionshipConfig() {
     if (snap.exists()) {
       const data = snap.data() || {};
       state.config = {
-        groupCount: Math.min(4, Math.max(2, Number(data.groupCount || 4))),
+        groupCount: Math.min(4, Math.max(1, Number(data.groupCount || 4))),
         qualifiersPerGroup: Math.min(8, Math.max(1, Number(data.qualifiersPerGroup || 4))),
         usePlayIn: !!data.usePlayIn
       };
@@ -161,7 +161,7 @@ async function loadChampionshipConfig() {
       const local = JSON.parse(localStorage.getItem("ifi2_champ_config") || "null");
       if (local) {
         state.config = {
-          groupCount: Math.min(4, Math.max(2, Number(local.groupCount || 4))),
+          groupCount: Math.min(4, Math.max(1, Number(local.groupCount || 4))),
           qualifiersPerGroup: Math.min(8, Math.max(1, Number(local.qualifiersPerGroup || 4))),
           usePlayIn: !!local.usePlayIn
         };
